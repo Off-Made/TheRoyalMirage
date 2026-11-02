@@ -1,0 +1,143 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   THE ROYAL MIRAGE — Fondamenta CSS
+   I colori arrivano da src/art/palette.ts (installati al boot); i ruoli da
+   tokens.css. Qui: reset, stage, overlay, accessibilita'.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Geometria del design space dei giochi, scritta da core/App.ts. */
+  --vp-scale: 1;
+  --vp-offset-x: 0px;
+  --vp-offset-y: 0px;
+  --vp-width: 1920px;
+  --vp-height: 1080px;
+  --vp-ext-x: 0px;
+  --vp-ext-y: 0px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text-strong);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* Il canvas WebGL riempie la finestra; il letterbox lo gestisce Pixi. */
+#stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+#stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* L'overlay e' allineato al design space dei giochi (HUD). Le schermate di
+   menu e sala ne escono: sono a tutta finestra e responsive. */
+#overlay {
+  position: fixed;
+  left: var(--vp-offset-x);
+  top: var(--vp-offset-y);
+  width: var(--vp-width);
+  height: var(--vp-height);
+  z-index: 10;
+  pointer-events: none;
+}
+#overlay > * {
+  pointer-events: auto;
+}
+/* L'HUD copre tutto il design space ma e' trasparente ai click: solo barra,
+   testata e messaggi li ricevono (hud.css). Senza questa regola l'ID sopra
+   vince su `.go-hud` e il tappeto Pixi sotto non riceve piu' nulla. */
+#overlay > .design-space {
+  pointer-events: none;
+}
+
+/* Misure in "px di design" 1920x1080, scalate col viewport: solo l'HUD. */
+.design-space {
+  position: absolute;
+  inset: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+  transform: scale(var(--vp-scale));
+}
+
+/* ── Accessibilita' */
+:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 3px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Utility tipografiche */
+
+/** Oro inciso nel testo: per titoli e importi importanti. Statico, niente luccichio continuo. */
+.gold-text {
+  background: var(--grad-gold-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/** Vetro scuro: superficie traslucida sopra le foto. */
+.glass {
+  background: var(--surface-glass);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-lg), var(--sheen-top);
+}

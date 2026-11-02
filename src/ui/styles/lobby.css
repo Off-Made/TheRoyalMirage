@@ -1,0 +1,446 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   THE ROYAL MIRAGE — Sala giochi e copertine
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ══════════════════════════════════════════════════════ COPERTINA
+ * Composizione: fondo nella tinta del gioco + luci della Strip sfocate in
+ * trasparenza + segno tipografico d'insegna + tre icone 3D.
+ */
+.go-cover {
+  --tone-a: var(--red-core);
+  --tone-b: var(--red-shadow);
+  --tone-glow: var(--red-light-rgb);
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 70% 80% at 50% 38%, rgba(var(--tone-glow), 0.45), transparent 70%),
+    linear-gradient(160deg, var(--tone-a), var(--tone-b) 78%);
+}
+/* Le luci della Strip, appena percepibili: profondita' senza scenografia. */
+.go-cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url('/assets/bg/lights.webp') center / cover;
+  mix-blend-mode: screen;
+  opacity: 0.32;
+}
+/* Pavimento: un'ombra alla base su cui gli oggetti "poggiano". */
+.go-cover::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 9%;
+  height: 12%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(var(--plum-abyss-rgb), 0.6), transparent 70%);
+}
+
+.go-cover__mark {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-marquee);
+  font-weight: 800;
+  font-size: clamp(4rem, 9vw, 7rem);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: rgba(var(--gold-light-rgb), 0.28);
+  text-shadow: 0 0 30px rgba(var(--gold-core-rgb), 0.25);
+  transform: translateY(-6%);
+  user-select: none;
+}
+.go-cover--sm .go-cover__mark {
+  font-size: clamp(3rem, 6vw, 5rem);
+}
+
+.go-cover__icon {
+  position: absolute;
+  z-index: 1;
+  height: auto;
+  aspect-ratio: 1;
+  filter: drop-shadow(0 10px 14px rgba(var(--plum-abyss-rgb), 0.55));
+  transition: transform var(--t-slow) var(--ease-out);
+}
+.go-cover__icon--main {
+  left: 50%;
+  bottom: 13%;
+  width: 40%;
+  max-width: 170px;
+  transform: translateX(-50%);
+}
+.go-cover__icon--left {
+  left: 10%;
+  bottom: 22%;
+  width: 24%;
+  max-width: 100px;
+  transform: rotate(-14deg);
+  opacity: 0.92;
+}
+.go-cover__icon--right {
+  right: 10%;
+  bottom: 20%;
+  width: 24%;
+  max-width: 100px;
+  transform: rotate(12deg);
+  opacity: 0.92;
+}
+
+/* Toni: solo coppie di token. */
+.go-cover--red {
+  --tone-a: var(--red-core);
+  --tone-b: var(--red-shadow);
+  --tone-glow: var(--gold-core-rgb);
+}
+.go-cover--violet {
+  --tone-a: var(--accent-violet-core);
+  --tone-b: var(--accent-violet-deep);
+  --tone-glow: var(--neon-pink-rgb);
+}
+.go-cover--sapphire {
+  --tone-a: var(--accent-sapphire-core);
+  --tone-b: var(--accent-sapphire-deep);
+  --tone-glow: var(--gold-light-rgb);
+}
+.go-cover--felt {
+  --tone-a: var(--felt-light);
+  --tone-b: var(--felt-deep);
+  --tone-glow: var(--gold-light-rgb);
+}
+.go-cover--gold {
+  --tone-a: var(--gold-mid);
+  --tone-b: var(--gold-shadow);
+  --tone-glow: var(--gold-hot-rgb);
+}
+.go-cover--gold .go-cover__mark {
+  color: rgba(var(--red-shadow-rgb), 0.28);
+  text-shadow: none;
+}
+.go-cover--crimson {
+  --tone-a: var(--felt-red-light);
+  --tone-b: var(--felt-red-deep);
+  --tone-glow: var(--gold-core-rgb);
+}
+.go-cover--emerald {
+  --tone-a: var(--accent-emerald-core);
+  --tone-b: var(--accent-emerald-deep);
+  --tone-glow: var(--gold-light-rgb);
+}
+.go-cover--neon {
+  --tone-a: var(--plum-high);
+  --tone-b: var(--plum-abyss);
+  --tone-glow: var(--neon-pink-rgb);
+}
+.go-cover--neon .go-cover__mark {
+  color: rgba(var(--neon-halo-rgb), 0.5);
+  text-shadow: var(--glow-text-neon);
+}
+
+/* ══════════════════════════════════════════════════════ SALA */
+.go-lobby {
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(var(--gold-core-rgb), 0.1), transparent 70%),
+    var(--bg);
+}
+.go-lobby__scroll {
+  flex: 1 1 auto;
+}
+.go-lobby__inner {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--sp-4) var(--gutter) 0;
+  display: grid;
+  gap: var(--sp-6);
+}
+
+/* ── Banner d'apertura */
+.go-promo {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: center;
+  min-height: 300px;
+  padding: var(--sp-7) var(--sp-7);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-gold);
+  background:
+    linear-gradient(90deg, rgba(var(--plum-abyss-rgb), 0.95) 0%, rgba(var(--plum-abyss-rgb), 0.72) 45%, rgba(var(--plum-abyss-rgb), 0.15) 100%),
+    url('/assets/bg/bellagio.webp') 50% 12% / cover no-repeat;
+  box-shadow: var(--shadow-lg);
+}
+.go-promo__text {
+  display: grid;
+  gap: var(--sp-3);
+  max-width: 34rem;
+}
+.go-promo__kicker {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: var(--fs-xl);
+  color: var(--neon-halo);
+  text-shadow: var(--glow-text-neon);
+}
+.go-promo__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(2.2rem, 4.4vw, 3.6rem);
+  line-height: 0.96;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--text-strong);
+}
+.go-promo__sub {
+  margin: 0;
+  max-width: 44ch;
+  color: var(--text-soft);
+}
+.go-promo__art {
+  position: relative;
+  height: 100%;
+  min-height: 220px;
+}
+.go-promo__icon {
+  position: absolute;
+  height: auto;
+  aspect-ratio: 1;
+  filter: drop-shadow(0 16px 22px rgba(var(--plum-abyss-rgb), 0.7));
+}
+.go-promo__icon--a {
+  width: 24%;
+  left: 4%;
+  bottom: 10%;
+  transform: rotate(-14deg);
+}
+.go-promo__icon--b {
+  width: 34%;
+  left: 33%;
+  top: 4%;
+}
+.go-promo__icon--c {
+  width: 22%;
+  right: 6%;
+  bottom: 14%;
+  transform: rotate(12deg);
+}
+
+/* ── Filtri */
+.go-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.go-tab {
+  min-height: 40px;
+  padding: 0 var(--sp-5);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-1);
+  color: var(--text-soft);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+.go-tab:hover {
+  color: var(--text-strong);
+  border-color: var(--border-gold);
+}
+.go-tab.is-active {
+  background: var(--grad-gold);
+  border-color: var(--gold-light);
+  color: var(--text-on-gold);
+}
+
+/* ── Sezioni e griglia */
+.go-section {
+  display: grid;
+  gap: var(--sp-4);
+}
+.go-section__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-2xl);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.go-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: var(--sp-5);
+}
+
+/* ══════════════════════════════════════════════════════ CARTA DI GIOCO */
+.go-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-1);
+  border: 1px solid var(--border-faint);
+  box-shadow: var(--shadow-md);
+  transition:
+    transform var(--t-base) var(--ease-out),
+    box-shadow var(--t-base) var(--ease-out),
+    border-color var(--t-base) var(--ease-out);
+}
+.go-card.is-open {
+  cursor: pointer;
+}
+.go-card.is-open:hover,
+.go-card.is-open:focus-visible {
+  transform: translateY(-4px);
+  border-color: rgba(var(--card-accent-rgb), 0.9);
+  box-shadow: var(--shadow-lg), 0 0 32px rgba(var(--card-accent-rgb), 0.3);
+}
+.go-card.is-open:hover .go-cover__icon--main {
+  transform: translateX(-50%) translateY(-4px) scale(1.04);
+}
+
+.go-card__cover {
+  position: relative;
+}
+.go-card__cover .go-cover {
+  border-bottom: 1px solid rgba(var(--card-accent-rgb), 0.5);
+}
+
+.go-card__badge {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  z-index: 2;
+  padding: 3px var(--sp-3);
+  border-radius: var(--r-pill);
+  background: rgba(var(--plum-abyss-rgb), 0.72);
+  border: 1px solid var(--border-soft);
+  color: var(--text-soft);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.go-card__lock {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--sp-1);
+  background: rgba(var(--plum-abyss-rgb), 0.66);
+  backdrop-filter: grayscale(0.8) blur(2px);
+  -webkit-backdrop-filter: grayscale(0.8) blur(2px);
+  color: var(--text-soft);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+}
+.go-card__lock-glyph {
+  font-size: 1.8rem;
+}
+
+.go-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-4) var(--sp-4);
+  flex: 1 1 auto;
+}
+.go-card__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-xl);
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+}
+.go-card__tag {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-mute);
+}
+.go-card__specs {
+  display: flex;
+  gap: var(--sp-5);
+  margin: var(--sp-1) 0 var(--sp-2);
+}
+.go-card__spec {
+  display: grid;
+  gap: 1px;
+}
+.go-card__spec dt {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-mute);
+}
+.go-card__spec dd {
+  margin: 0;
+  font-weight: 800;
+  font-size: var(--fs-sm);
+  color: var(--text-strong);
+}
+.go-card__hint {
+  margin: var(--sp-1) 0 var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--text-soft);
+}
+.go-card__action {
+  margin-top: auto;
+  align-self: stretch;
+}
+
+/* ══════════════════════════════════════════════════════ RESPONSIVE */
+@media (max-width: 900px) {
+  .go-promo {
+    grid-template-columns: 1fr;
+    padding: var(--sp-6) var(--sp-5);
+    min-height: 0;
+    background:
+      linear-gradient(0deg, rgba(var(--plum-abyss-rgb), 0.95) 30%, rgba(var(--plum-abyss-rgb), 0.5) 100%),
+      url('/assets/bg/bellagio.webp') 50% 30% / cover no-repeat;
+  }
+  .go-promo__art {
+    display: none;
+  }
+}
+@media (max-width: 560px) {
+  .go-grid {
+    grid-template-columns: 1fr;
+  }
+  .go-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: var(--sp-1);
+  }
+  .go-tab {
+    flex: 0 0 auto;
+  }
+}
+
+/* Telefono in orizzontale: la promo diventa una striscia, i giochi salgono. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .go-promo {
+    min-height: 0;
+    padding: var(--sp-4) var(--sp-5);
+  }
+  .go-promo__art {
+    display: none;
+  }
+  .go-promo__kicker {
+    font-size: var(--fs-md);
+  }
+  .go-promo__title {
+    font-size: 1.7rem;
+  }
+}

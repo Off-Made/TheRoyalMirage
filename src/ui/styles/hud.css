@@ -1,0 +1,709 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   THE ROYAL MIRAGE — Plancia di gioco (HUD)
+   Misure in pixel di DESIGN (1920x1080): il contenitore e' un .design-space,
+   scalato col canvas. In alto: uscita, titolo, regole. In basso: la console
+   (saldo · puntata · vincita · comandi · pulsante di gioco).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.go-hud {
+  pointer-events: none;
+  font-family: var(--font-ui);
+  color: var(--text-strong);
+}
+.go-hud__top,
+.go-hud__bar,
+.go-hud__msg {
+  pointer-events: auto;
+}
+
+/* Entrata: barra alta e console scivolano al loro posto, una volta. */
+.go-hud__top,
+.go-hud__bar {
+  opacity: 0;
+  transition: opacity var(--t-slow) var(--ease-out), transform var(--t-slow) var(--ease-out);
+}
+.go-hud__top {
+  transform: translateY(-12px);
+}
+.go-hud__bar {
+  transform: translateY(16px);
+}
+.go-hud.is-in .go-hud__top,
+.go-hud.is-in .go-hud__bar {
+  opacity: 1;
+  transform: none;
+}
+
+/* ══════════════════════════════════════════════════════ BARRA ALTA */
+.go-hud__top {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 96px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 40px;
+  isolation: isolate;
+}
+/* La sfumatura scura sotto la barra arriva fino ai bordi della FINESTRA, non
+   del design space: altrimenti, su schermi di proporzioni diverse dal 16:9,
+   il suo bordo si vedrebbe come uno scalino sullo sfondo. */
+.go-hud__top::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: calc(-1 * var(--vp-ext-x));
+  right: calc(-1 * var(--vp-ext-x));
+  top: calc(-1 * var(--vp-ext-y));
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(var(--plum-abyss-rgb), 0.85), rgba(var(--plum-abyss-rgb), 0));
+  pointer-events: none;
+}
+.go-hud__exit {
+  justify-self: start;
+}
+.go-hud__title {
+  margin: 0;
+  font-family: var(--font-marquee);
+  font-weight: 800;
+  font-size: 46px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--grad-gold-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 16px rgba(var(--gold-core-rgb), 0.3));
+}
+.go-hud__top .go-btn {
+  min-height: 44px;
+  font-size: 15px;
+}
+.go-hud__top-right {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.go-hud__top-extra {
+  display: flex;
+  gap: 12px;
+}
+
+.go-hud--marquee .go-hud__title {
+  visibility: hidden;
+}
+
+/* ══════════════════════════════════════════════════════ CONSOLE */
+.go-hud__bar {
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  bottom: 22px;
+  height: 116px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 0 18px 0 32px;
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(var(--plum-lifted-rgb), 0.92), rgba(var(--plum-abyss-rgb), 0.94));
+  border: 1px solid var(--border-gold);
+  box-shadow:
+    inset 0 1px 0 rgba(var(--gold-light-rgb), 0.22),
+    0 18px 50px rgba(var(--plum-abyss-rgb), 0.8);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+/* Filo di luce sul bordo alto: l'unico decoro della console. */
+.go-hud__bar::before {
+  content: '';
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold-light), transparent);
+  opacity: 0.7;
+}
+
+.go-hud__meter {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 190px;
+  gap: 6px;
+}
+.go-hud__label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-mute);
+  line-height: 1;
+}
+.go-hud__value {
+  font-family: var(--font-num);
+  font-weight: 800;
+  font-size: 38px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+  transition: color var(--t-base);
+}
+.go-hud__meter--balance .go-hud__value {
+  color: var(--gold-light);
+}
+.go-hud__value.is-up {
+  color: var(--win-light);
+  text-shadow: 0 0 18px rgba(var(--win-core-rgb), 0.6);
+}
+.go-hud__value--win {
+  color: var(--text-soft);
+}
+.go-hud__value--win.is-hot {
+  color: var(--win-light);
+  text-shadow: 0 0 18px rgba(var(--win-core-rgb), 0.6);
+  animation: go-win-pop 420ms var(--ease-back);
+}
+@keyframes go-win-pop {
+  40% {
+    transform: scale(1.08);
+  }
+}
+
+/* ── Puntata */
+.go-hud__bet {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 84px;
+  padding: 0 18px;
+  border-left: 1px solid var(--border-faint);
+  border-right: 1px solid var(--border-faint);
+}
+.go-hud__bet.is-locked {
+  opacity: 0.55;
+}
+.go-hud__step {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-gold);
+  background: var(--surface-2);
+  color: var(--gold-light);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+.go-hud__step:not(:disabled):hover {
+  background: var(--surface-3);
+  border-color: var(--gold-light);
+  box-shadow: var(--glow-gold);
+}
+.go-hud__step:not(:disabled):active {
+  transform: scale(0.94);
+}
+.go-hud__step:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.go-hud__input {
+  width: 200px;
+  height: 52px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: rgba(var(--plum-abyss-rgb), 0.7);
+  text-align: center;
+  font-size: 32px;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.go-hud__input:hover:not(:disabled) {
+  border-color: var(--border-gold);
+}
+.go-hud__input:focus {
+  outline: none;
+  border-color: var(--gold-core);
+  box-shadow: var(--glow-gold);
+}
+.go-hud__input:disabled {
+  cursor: not-allowed;
+}
+.go-hud__input.is-invalid {
+  border-color: var(--loss-core);
+  animation: go-bet-shake 300ms var(--ease-out);
+}
+@keyframes go-bet-shake {
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+.go-hud__quickgrid {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 6px;
+}
+.go-hud__quick {
+  min-width: 66px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-faint);
+  background: var(--surface-1);
+  color: var(--text-soft);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+.go-hud__quick:hover:not(:disabled) {
+  color: var(--text-strong);
+  border-color: var(--border-gold);
+}
+.go-hud__quick:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.go-hud__quick:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.go-hud__quick--allin {
+  color: var(--red-light);
+  border-color: rgba(var(--red-core-rgb), 0.5);
+}
+.go-hud__quick--allin.is-on {
+  background: var(--grad-red);
+  color: var(--text-on-red);
+  border-color: var(--red-light);
+  box-shadow: var(--glow-red);
+}
+
+/* ── Fiche (tavoli): corpo, inserti sul bordo, anello interno, valore */
+.go-hud__bet--chips {
+  gap: 18px;
+}
+.go-hud__chips {
+  display: flex;
+  gap: 8px;
+}
+.go-chip {
+  --chip: var(--chip-white);
+  --chip-ink: var(--text-ink);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--chip-ink);
+  font-family: var(--font-num);
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  background:
+    radial-gradient(circle, var(--chip) 0 52%, rgba(var(--chip-insert-rgb), 0.9) 53% 56%, var(--chip) 57%),
+    repeating-conic-gradient(var(--chip) 0 22.5deg, var(--chip-insert) 22.5deg 45deg);
+  box-shadow:
+    inset 0 0 0 2px rgba(var(--plum-abyss-rgb), 0.25),
+    inset 0 -3px 6px rgba(var(--plum-abyss-rgb), 0.35),
+    0 4px 10px rgba(var(--plum-abyss-rgb), 0.6);
+  transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast);
+}
+.go-chip:not(:disabled):hover {
+  transform: translateY(-3px);
+}
+.go-chip.is-active {
+  transform: translateY(-5px);
+  box-shadow:
+    inset 0 0 0 2px rgba(var(--plum-abyss-rgb), 0.25),
+    0 0 0 3px var(--gold-light),
+    0 0 22px rgba(var(--gold-core-rgb), 0.6);
+}
+.go-chip:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+.go-chip--ivory {
+  --chip: var(--chip-white);
+  --chip-ink: var(--text-ink);
+}
+.go-chip--sapphire {
+  --chip: var(--chip-teal);
+  --chip-ink: var(--text-strong);
+}
+.go-chip--red {
+  --chip: var(--chip-red);
+  --chip-ink: var(--text-strong);
+}
+.go-chip--lapis {
+  --chip: var(--chip-blue);
+  --chip-ink: var(--text-strong);
+}
+.go-chip--emerald {
+  --chip: var(--chip-green);
+  --chip-ink: var(--text-strong);
+}
+.go-chip--black {
+  --chip: var(--chip-black);
+  --chip-ink: var(--gold-light);
+}
+.go-chip--amethyst {
+  --chip: var(--chip-purple);
+  --chip-ink: var(--text-strong);
+}
+.go-chip--gold {
+  --chip: var(--gold-core);
+  --chip-ink: var(--text-ink);
+}
+.go-hud__bet--chips .go-chip {
+  width: 52px;
+  height: 52px;
+  font-size: 13px;
+}
+.go-hud__bet--chips .go-hud__input {
+  width: 170px;
+}
+
+/* ── Comandi extra (turbo, auto, incassa...) */
+.go-hud__extra {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin-left: auto;
+}
+.go-hud__toggle.is-on {
+  background: rgba(var(--gold-core-rgb), 0.16);
+  border-color: var(--gold-light);
+  color: var(--gold-light);
+  box-shadow: var(--glow-gold);
+}
+
+/* ── Il pulsante di gioco: rosso marquee con anello d'oro, come al tavolo */
+.go-hud__primary {
+  min-width: 260px;
+  height: 84px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 34px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.go-btn.go-hud__primary.go-btn--primary {
+  background: var(--play-bg);
+  color: var(--text-on-red);
+  border: 2px solid var(--play-ring);
+  box-shadow:
+    inset 0 2px 0 rgba(var(--red-light-rgb), 0.8),
+    inset 0 -5px 10px rgba(var(--red-shadow-rgb), 0.7),
+    0 0 0 4px rgba(var(--gold-shadow-rgb), 0.6),
+    0 10px 30px rgba(var(--red-core-rgb), 0.35);
+  text-shadow: 0 2px 0 rgba(var(--red-shadow-rgb), 0.8);
+}
+.go-btn.go-hud__primary.go-btn--primary:not(:disabled):hover {
+  filter: brightness(1.08);
+  box-shadow:
+    inset 0 2px 0 rgba(var(--red-light-rgb), 0.8),
+    inset 0 -5px 10px rgba(var(--red-shadow-rgb), 0.7),
+    0 0 0 4px rgba(var(--gold-core-rgb), 0.7),
+    0 0 40px rgba(var(--red-core-rgb), 0.55);
+}
+/* Incassa (Golden Chip), conferme a rischio: oro pieno, e' l'azione che conta adesso. */
+.go-btn.go-hud__primary.go-btn--danger {
+  background: var(--action-bg);
+  color: var(--action-text);
+  border: 2px solid var(--gold-hot);
+  box-shadow: var(--glow-gold-strong);
+  text-shadow: none;
+}
+.go-hud__primary:disabled {
+  filter: saturate(0.4);
+}
+
+/* ══════════════════════════════════════════════════════ MESSAGGIO */
+.go-hud__msg {
+  position: absolute;
+  left: 50%;
+  bottom: 160px;
+  margin: 0;
+  padding: 12px 34px;
+  border-radius: var(--r-pill);
+  transform: translate(-50%, 8px);
+  background: rgba(var(--plum-abyss-rgb), 0.8);
+  border: 1px solid var(--border-soft);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 24px;
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-base) var(--ease-out), transform var(--t-base) var(--ease-out);
+}
+.go-hud__msg.is-shown {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.go-hud__msg.is-win {
+  color: var(--win-light);
+  border-color: rgba(var(--win-core-rgb), 0.6);
+  box-shadow: var(--glow-win);
+}
+.go-hud__msg.is-warn {
+  color: var(--gold-light);
+  border-color: var(--border-gold);
+}
+
+/* ══════════════════════════════════════════════════════ TABELLA PAGAMENTI (modale) */
+.go-pay {
+  display: grid;
+  gap: var(--sp-5);
+}
+.go-pay__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-3);
+}
+.go-pay__item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--plum-base);
+  border: 1px solid var(--border-faint);
+}
+.go-pay__sym {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-xs);
+}
+.go-pay__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+}
+.go-pay__text strong {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-lg);
+  letter-spacing: 0.02em;
+  color: var(--text-strong);
+}
+.go-pay__note {
+  margin: 0;
+  color: var(--text-soft);
+  max-width: 80ch;
+}
+.go-pay__lines {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--sp-2);
+}
+.go-pay__line {
+  display: flex;
+  justify-content: center;
+  padding: var(--sp-1);
+  border-radius: var(--r-xs);
+  background: var(--plum-base);
+  border: 1px solid var(--border-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .go-hud__top,
+  .go-hud__bar {
+    transform: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════ TELEFONO
+ * `html.is-compact` (lato corto <= 500 px, vedi core/App.ts). Su un iPhone in
+ * orizzontale il design space e' scalato a ~0,36: le misure in px di design
+ * qui sopra diventerebbero testi da 5 px e pulsanti da 15. Qui ogni misura e'
+ * in pixel REALI dello schermo: `--vp-u` e' un px CSS espresso in px di design.
+ * Le barre arrivano ai bordi della finestra (oltre il design space) e si
+ * tengono fuori dalla tacca e dall'indicatore Home (`safe-area-inset-*`).
+ */
+.is-compact .go-hud {
+  --vp-u: calc(1px / var(--vp-scale));
+  --vp-safe-l: calc(max(env(safe-area-inset-left), 10px) / var(--vp-scale));
+  --vp-safe-r: calc(max(env(safe-area-inset-right), 10px) / var(--vp-scale));
+  --vp-safe-t: calc(max(env(safe-area-inset-top), 4px) / var(--vp-scale));
+  --vp-safe-b: calc(max(env(safe-area-inset-bottom), 6px) / var(--vp-scale));
+}
+
+/* ── Barra alta */
+.is-compact .go-hud__top {
+  left: calc(-1 * var(--vp-ext-x) + var(--vp-safe-l));
+  right: calc(-1 * var(--vp-ext-x) + var(--vp-safe-r));
+  top: calc(-1 * var(--vp-ext-y) + var(--vp-safe-t));
+  height: calc(44 * var(--vp-u));
+  padding: 0;
+  gap: calc(8 * var(--vp-u));
+}
+.is-compact .go-hud__title {
+  font-size: calc(22 * var(--vp-u));
+  filter: none;
+}
+.is-compact .go-hud__top .go-btn {
+  min-height: calc(36 * var(--vp-u));
+  padding: 0 calc(12 * var(--vp-u));
+  gap: calc(5 * var(--vp-u));
+  font-size: calc(13 * var(--vp-u));
+}
+.is-compact .go-hud__top-right,
+.is-compact .go-hud__top-extra {
+  gap: calc(6 * var(--vp-u));
+}
+/* I comandi del tavolo in alto (Ripeti, Annulla, Cancella) restano solo
+   icona, se ne hanno una: il nome resta per i lettori di schermo. */
+.is-compact .go-hud__top-extra .go-btn:has(.go-btn__icon) .go-btn__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.is-compact .go-hud__top-extra .go-btn:has(.go-btn__icon) {
+  min-width: calc(40 * var(--vp-u));
+  padding: 0 calc(10 * var(--vp-u));
+  font-size: calc(17 * var(--vp-u));
+}
+
+/* ── Console */
+.is-compact .go-hud__bar {
+  left: calc(-1 * var(--vp-ext-x) + var(--vp-safe-l));
+  right: calc(-1 * var(--vp-ext-x) + var(--vp-safe-r));
+  bottom: var(--vp-safe-b);
+  height: calc(58 * var(--vp-u));
+  gap: calc(10 * var(--vp-u));
+  padding: 0 calc(7 * var(--vp-u)) 0 calc(14 * var(--vp-u));
+  border-radius: calc(18 * var(--vp-u));
+  box-shadow: inset 0 1px 0 rgba(var(--gold-light-rgb), 0.22);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.is-compact .go-hud__meter {
+  min-width: 0;
+  gap: calc(3 * var(--vp-u));
+  flex: 0 0 auto;
+}
+.is-compact .go-hud__label {
+  font-size: calc(10 * var(--vp-u));
+}
+.is-compact .go-hud__value {
+  font-size: calc(17 * var(--vp-u));
+}
+.is-compact .go-hud__bet {
+  height: calc(44 * var(--vp-u));
+  padding: 0 calc(8 * var(--vp-u));
+  gap: calc(6 * var(--vp-u));
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.is-compact .go-hud__step {
+  width: calc(36 * var(--vp-u));
+  height: calc(36 * var(--vp-u));
+  font-size: calc(20 * var(--vp-u));
+  flex: 0 0 auto;
+}
+/* 16 px reali: sotto, Safari ingrandisce la pagina quando il campo prende il fuoco. */
+.is-compact .go-hud__input,
+.is-compact .go-hud__bet--chips .go-hud__input {
+  width: calc(84 * var(--vp-u));
+  height: calc(34 * var(--vp-u));
+  padding: 0 calc(4 * var(--vp-u));
+  border-radius: calc(9 * var(--vp-u));
+  font-size: calc(16 * var(--vp-u));
+}
+/* Min, ½, ×2, All-in: al telefono restano −/+ e il campo. */
+.is-compact .go-hud__quickgrid {
+  display: none;
+}
+.is-compact .go-hud__bet--chips {
+  gap: calc(8 * var(--vp-u));
+}
+/* Le nove fiche scorrono col dito invece di stringersi fino a non leggersi. */
+.is-compact .go-hud__chips {
+  gap: calc(6 * var(--vp-u));
+  max-width: calc(206 * var(--vp-u));
+  padding: calc(5 * var(--vp-u)) calc(2 * var(--vp-u));
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  /* L'ultima fiche visibile sfuma: dice "continua" senza una barra di scorrimento. */
+  -webkit-mask-image: linear-gradient(90deg, var(--black) 82%, transparent);
+  mask-image: linear-gradient(90deg, var(--black) 82%, transparent);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.is-compact .go-hud__chips::-webkit-scrollbar {
+  display: none;
+}
+.is-compact .go-hud__bet--chips .go-chip {
+  flex: 0 0 auto;
+  width: calc(38 * var(--vp-u));
+  height: calc(38 * var(--vp-u));
+  font-size: calc(11 * var(--vp-u));
+  scroll-snap-align: start;
+}
+.is-compact .go-chip.is-active {
+  transform: translateY(calc(-2 * var(--vp-u)));
+}
+.is-compact .go-hud__extra {
+  gap: calc(6 * var(--vp-u));
+}
+.is-compact .go-hud__extra .go-btn,
+.is-compact .go-hud__extra .go-input {
+  min-height: calc(38 * var(--vp-u));
+  padding: 0 calc(11 * var(--vp-u));
+  font-size: calc(13 * var(--vp-u));
+}
+.is-compact .go-hud__extra .go-input {
+  width: calc(64 * var(--vp-u)) !important;
+  height: calc(38 * var(--vp-u));
+  font-size: calc(16 * var(--vp-u));
+  border-radius: calc(9 * var(--vp-u));
+}
+.is-compact .go-hud__extra .go-hud__label {
+  margin-right: calc(4 * var(--vp-u)) !important;
+}
+.is-compact .go-hud__primary {
+  min-width: calc(112 * var(--vp-u));
+  height: calc(46 * var(--vp-u));
+  padding: 0 calc(16 * var(--vp-u));
+  font-size: calc(19 * var(--vp-u));
+  flex: 0 0 auto;
+}
+
+/* ── Messaggio: appena sopra la console */
+.is-compact .go-hud__msg {
+  bottom: calc(var(--vp-safe-b) + 66 * var(--vp-u));
+  max-width: calc(100% - 2 * var(--vp-safe-l));
+  padding: calc(5 * var(--vp-u)) calc(16 * var(--vp-u));
+  font-size: calc(13 * var(--vp-u));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}

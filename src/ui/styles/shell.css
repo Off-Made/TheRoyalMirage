@@ -1,0 +1,545 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   THE ROYAL MIRAGE — Componenti condivisi
+   Proprietario unico di `.go-btn`, `.go-panel`, modali, campi e toast.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ═══════════════════════════════════════════════════════════ PULSANTI
+ * Pillola per l'azione, sempre. L'oro e' l'azione principale; il fantasma
+ * a filo d'oro e' la secondaria; il rosso e' riservato al pericolo.
+ */
+.go-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding: 0 var(--sp-5);
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    filter var(--t-fast) var(--ease-out),
+    box-shadow var(--t-base) var(--ease-out),
+    background-color var(--t-base) var(--ease-out),
+    border-color var(--t-base) var(--ease-out);
+}
+.go-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.go-btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* Riflesso che attraversa il pulsante all'hover: un solo passaggio. */
+.go-btn__sheen {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 35%, rgba(var(--gold-hot-rgb), 0.38) 50%, transparent 65%);
+  transform: translateX(-110%);
+  pointer-events: none;
+}
+.go-btn--primary:not(:disabled):hover .go-btn__sheen {
+  transform: translateX(110%);
+  transition: transform 640ms var(--ease-out);
+}
+
+.go-btn__icon {
+  display: inline-grid;
+  place-items: center;
+  font-size: 1.05em;
+  line-height: 1;
+}
+.go-btn__icon img {
+  width: 1.4em;
+  height: 1.4em;
+}
+
+.go-btn--primary {
+  background: var(--action-bg);
+  color: var(--action-text);
+  border-color: rgba(var(--gold-hot-rgb), 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(var(--gold-hot-rgb), 0.9),
+    inset 0 -2px 0 rgba(var(--gold-shadow-rgb), 0.45),
+    0 6px 18px rgba(var(--gold-core-rgb), 0.22);
+}
+.go-btn--primary:not(:disabled):hover {
+  filter: brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 rgba(var(--gold-hot-rgb), 0.9),
+    inset 0 -2px 0 rgba(var(--gold-shadow-rgb), 0.45),
+    var(--glow-gold-strong);
+}
+
+.go-btn--secondary {
+  background: rgba(var(--plum-lifted-rgb), 0.72);
+  color: var(--text-strong);
+  border-color: var(--border-gold);
+}
+.go-btn--secondary:not(:disabled):hover {
+  background: var(--surface-3);
+  border-color: var(--border-gold-strong);
+  box-shadow: var(--glow-gold);
+}
+
+.go-btn--ghost {
+  background: transparent;
+  color: var(--text-soft);
+  border-color: var(--border-faint);
+}
+.go-btn--ghost:not(:disabled):hover {
+  color: var(--text-strong);
+  background: rgba(var(--plum-high-rgb), 0.6);
+  border-color: var(--border-soft);
+}
+
+.go-btn--danger {
+  background: transparent;
+  color: var(--loss-light);
+  border-color: rgba(var(--loss-core-rgb), 0.6);
+}
+.go-btn--danger:not(:disabled):hover {
+  background: rgba(var(--loss-core-rgb), 0.14);
+  border-color: var(--loss-core);
+}
+
+.go-btn--sm {
+  min-height: 36px;
+  padding: 0 var(--sp-4);
+  font-size: var(--fs-xs);
+}
+.go-btn--lg {
+  min-height: 56px;
+  padding: 0 var(--sp-6);
+  font-size: var(--fs-md);
+}
+
+/* ═══════════════════════════════════════════════════════════ PANNELLO */
+.go-panel {
+  position: relative;
+  background: var(--grad-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg), var(--sheen-top);
+  color: var(--text-strong);
+}
+.go-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-6) var(--sp-4);
+  border-bottom: 1px solid var(--border-faint);
+}
+.go-panel__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-2xl);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--text-strong);
+}
+.go-panel__body {
+  padding: var(--sp-5) var(--sp-6);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--plum-line) transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════ MODALE */
+.go-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+  background: var(--surface-scrim);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: go-fade-in var(--t-base) var(--ease-out);
+}
+.go-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 94vw);
+  max-height: min(88vh, 960px);
+  border-color: var(--border-gold);
+  animation: go-modal-in var(--t-base) var(--ease-out);
+}
+.go-modal .go-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.go-modal__x {
+  min-width: 36px;
+  padding: 0;
+  flex: 0 0 auto;
+}
+.go-modal__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-6) var(--sp-5);
+  border-top: 1px solid var(--border-faint);
+}
+.go-modal__actions {
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: flex-end;
+  width: 100%;
+}
+.go-confirm__msg {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: var(--fs-md);
+  max-width: 60ch;
+}
+
+@keyframes go-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes go-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════ CAMPI */
+.go-group {
+  display: grid;
+  gap: var(--sp-1);
+}
+.go-group + .go-group {
+  margin-top: var(--sp-6);
+}
+.go-group__title {
+  margin: 0 0 var(--sp-2);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-xl);
+  letter-spacing: 0.02em;
+  color: var(--text-gold);
+}
+
+.go-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border-faint);
+}
+.go-field:last-child {
+  border-bottom: 0;
+}
+.go-field__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.go-field__label {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.go-field__hint {
+  font-size: var(--fs-sm);
+  color: var(--text-mute);
+}
+.go-field__control {
+  flex: 0 0 auto;
+}
+
+/* ── Interruttore */
+.go-toggle {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+.go-toggle__input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+.go-toggle__track {
+  display: block;
+  width: 48px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  background: var(--plum-high);
+  border: 1px solid var(--border-soft);
+  transition: background var(--t-base) var(--ease-out), border-color var(--t-base);
+}
+.go-toggle__track::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-soft);
+  transition: transform var(--t-base) var(--ease-back), background var(--t-base);
+}
+.go-toggle__input:checked + .go-toggle__track {
+  background: var(--grad-gold);
+  border-color: var(--border-gold-strong);
+}
+.go-toggle__input:checked + .go-toggle__track::after {
+  transform: translateX(20px);
+  background: var(--text-ink);
+}
+.go-toggle__input:focus-visible + .go-toggle__track {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 3px;
+}
+
+/* ── Slider */
+.go-slider {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.go-slider__input {
+  width: min(220px, 40vw);
+  height: 6px;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: var(--r-pill);
+  background: var(--plum-high);
+  outline-offset: 6px;
+}
+.go-slider__input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--grad-gold);
+  border: 1px solid var(--gold-hot);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.go-slider__input::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--gold-core);
+  border: 1px solid var(--gold-hot);
+  cursor: pointer;
+}
+.go-slider__value {
+  min-width: 3.5ch;
+  text-align: right;
+  font-weight: 700;
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Selettore a segmenti */
+.go-segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--r-pill);
+  background: var(--plum-base);
+  border: 1px solid var(--border-soft);
+}
+.go-seg {
+  min-height: 34px;
+  padding: 0 var(--sp-4);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text-soft);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.go-seg:hover {
+  color: var(--text-strong);
+}
+.go-seg.is-active {
+  background: var(--grad-gold);
+  color: var(--text-on-gold);
+}
+
+/* ── Campo di testo */
+.go-input {
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-soft);
+  background: var(--plum-base);
+  color: var(--text-strong);
+  font-weight: 600;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.go-input:focus {
+  outline: none;
+  border-color: var(--gold-core);
+  box-shadow: var(--glow-gold);
+}
+.go-input::placeholder {
+  color: var(--text-mute);
+}
+
+/* ── Barra di progresso */
+.go-progress {
+  position: relative;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--plum-high);
+  overflow: hidden;
+}
+.go-progress__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--grad-gold);
+  box-shadow: 0 0 12px rgba(var(--gold-core-rgb), 0.5);
+  transition: width var(--t-slow) var(--ease-out);
+}
+
+/* ═══════════════════════════════════════════════════════════ TOAST */
+#go-toasts {
+  position: fixed;
+  z-index: 800;
+  top: var(--sp-5);
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  gap: var(--sp-2);
+  width: min(520px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.go-toast {
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-md);
+  color: var(--text-strong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-align: center;
+  animation: go-toast-in var(--t-base) var(--ease-out);
+}
+.go-toast--win {
+  border-color: rgba(var(--win-core-rgb), 0.6);
+  box-shadow: var(--shadow-md), var(--glow-win);
+}
+.go-toast--vip {
+  border-color: var(--border-gold-strong);
+  box-shadow: var(--shadow-md), var(--glow-gold);
+  color: var(--gold-light);
+}
+.go-toast--warn {
+  border-color: rgba(var(--loss-core-rgb), 0.6);
+}
+.go-toast.is-leaving {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity var(--t-slow), transform var(--t-slow);
+}
+@keyframes go-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════ RUOTA IL TELEFONO
+ * Solo al telefono, in verticale, a un tavolo (classi su <html> scritte da
+ * core/App.ts e ui/Shell.ts). Copre il gioco: in verticale l'HUD a misura di
+ * dito e il tavolo non stanno insieme, e un tavolo minuscolo e' peggio di un
+ * invito chiaro. Home e sala restano utilizzabili in verticale.
+ */
+.go-rotate {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: max(env(safe-area-inset-top), var(--sp-6)) var(--sp-6) max(env(safe-area-inset-bottom), var(--sp-6));
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(var(--red-deep-rgb), 0.55), transparent 65%),
+    var(--bg);
+}
+.is-compact.is-portrait.in-game .go-rotate {
+  display: flex;
+}
+.go-rotate__phone {
+  width: 58px;
+  height: 96px;
+  margin-bottom: var(--sp-4);
+  padding: 6px;
+  border-radius: 14px;
+  border: 3px solid var(--gold-core);
+  box-shadow: var(--glow-gold);
+  animation: go-rotate-turn 2.4s var(--ease-out) infinite;
+}
+.go-rotate__screen {
+  width: 100%;
+  height: 100%;
+  border-radius: 7px;
+  background: linear-gradient(160deg, rgba(var(--gold-light-rgb), 0.35), rgba(var(--red-core-rgb), 0.35));
+}
+@keyframes go-rotate-turn {
+  0%,
+  20% {
+    transform: rotate(0deg);
+  }
+  55%,
+  85% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+.go-rotate__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+.go-rotate__body {
+  margin: 0;
+  max-width: 300px;
+  font-size: var(--fs-sm);
+  color: var(--text-soft);
+}
+@media (prefers-reduced-motion: reduce) {
+  .go-rotate__phone {
+    animation: none;
+    transform: rotate(-90deg);
+  }
+}

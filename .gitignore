@@ -1,0 +1,35 @@
+# ── Dipendenze: si reinstallano con `npm install` (Vercel lo fa da solo)
+node_modules/
+
+# ── Build: Vercel la rigenera a ogni deploy con `npm run build`
+dist/
+dist-ssr/
+*.local
+
+# ── Screenshot dei collaudi (tools/qa-*.mjs): ~190 MB, si rigenerano
+shots/
+
+# ── File di lavoro temporanei
+.tmp-*/
+*.log
+npm-debug.log*
+
+# ── Materiale di riferimento privato, non parte del gioco
+immagini ispirazioni/
+
+# ── Ambiente e segreti
+.env
+.env.*
+!.env.example
+
+# ── Vercel (cartella locale della CLI)
+.vercel/
+
+# ── Editor e sistema operativo
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#120814" />
+    <meta
+      name="description"
+      content="The Royal Mirage — casinò in stile Las Vegas. Slot, blackjack, roulette, baccarat, video poker e Golden Chip. Gioco di simulazione con euro virtuali."
+    />
+    <title>The Royal Mirage · Casinò in stile Las Vegas</title>
+    <link rel="icon" type="image/webp" href="/assets/icons/crown.webp" />
+
+    <!-- App sulla schermata Home (Safari → Condividi → Aggiungi alla schermata Home):
+         si apre a tutto schermo, senza le barre del browser. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/assets/app/icon-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Royal Mirage" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500..900&family=Big+Shoulders+Inline+Display:wght@700..900&family=Manrope:wght@400..800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preload" as="image" href="/assets/bg/strip.webp" media="(min-width: 761px)" />
+    <link rel="preload" as="image" href="/assets/bg/strip-m.webp" media="(max-width: 760px)" />
+
+    <!--
+      CSS critico inline: la schermata di avvio deve apparire al primo paint,
+      prima del bundle. I colori sono copie dei token di src/art/palette.ts:
+      tests/palette-sync.test.ts verifica che esistano tutti nella palette.
+    -->
+    <style>
+      :root {
+        --plum-base: #120814;
+        --plum-abyss: #0a040b;
+        --gold-hot: #fff6d6;
+        --gold-light: #ffe29a;
+        --gold-core: #f2c14e;
+        --gold-deep: #a87622;
+        --neon-pink: #ff4f9a;
+        --text-soft: #c2aec4;
+        --text-mute: #977f9b;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--plum-base);
+        color: var(--text-soft);
+        font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        overscroll-behavior: none;
+        touch-action: manipulation;
+      }
+      #boot {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 1.6rem;
+        padding: 1.5rem;
+        background:
+          radial-gradient(ellipse 70% 50% at 50% 42%, rgba(242, 193, 78, 0.12), transparent 70%),
+          var(--plum-base);
+        z-index: 1000;
+        transition: opacity 0.5s ease, visibility 0.5s;
+      }
+      #boot.done { opacity: 0; visibility: hidden; pointer-events: none; }
+      .boot-mark {
+        margin: 0;
+        display: grid;
+        justify-items: center;
+        line-height: 0.9;
+        text-align: center;
+      }
+      .boot-the {
+        font-family: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+        font-weight: 700;
+        font-size: clamp(1rem, 2.4vw, 1.6rem);
+        letter-spacing: 0.5em;
+        color: var(--gold-light);
+        text-transform: uppercase;
+      }
+      .boot-name {
+        font-family: 'Big Shoulders Inline Display', 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+        font-weight: 800;
+        font-size: clamp(2.8rem, 9vw, 6.5rem);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        background: linear-gradient(180deg, var(--gold-hot), var(--gold-light) 30%, var(--gold-core) 58%, var(--gold-deep));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 0 22px rgba(242, 193, 78, 0.35));
+      }
+      .boot-bar {
+        width: min(280px, 60vw);
+        height: 2px;
+        background: rgba(194, 174, 196, 0.18);
+        position: relative;
+        overflow: hidden;
+        border-radius: 2px;
+      }
+      .boot-bar::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        width: 40%;
+        background: linear-gradient(90deg, transparent, var(--neon-pink), var(--gold-core), transparent);
+        animation: scan 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+      }
+      @keyframes scan {
+        from { transform: translateX(-120%); }
+        to   { transform: translateX(320%); }
+      }
+      #boot-status {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--text-mute);
+        min-height: 1em;
+      }
+      .boot-legal {
+        position: absolute;
+        bottom: 1.4rem;
+        left: 0;
+        right: 0;
+        margin: 0 auto;
+        font-size: 0.75rem;
+        color: var(--text-mute);
+        text-align: center;
+        padding: 0 1.5rem;
+        max-width: 46rem;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-bar::after { animation-duration: 3s; }
+      }
+      #fatal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-content: center;
+        justify-items: center;
+        gap: 1rem;
+        padding: 2rem;
+        text-align: center;
+        background: var(--plum-base);
+        z-index: 2000;
+      }
+      #fatal.show { display: grid; }
+      #fatal h2 { font-family: 'Big Shoulders Display', sans-serif; color: var(--gold-core); margin: 0; font-size: 2rem; }
+      #fatal pre {
+        max-width: 60rem; max-height: 40vh; overflow: auto; text-align: left;
+        font-size: 0.75rem; color: var(--text-soft);
+        background: var(--plum-abyss); padding: 1rem; border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Contenitore del canvas WebGL -->
+    <div id="stage"></div>
+
+    <!-- Overlay HTML per menu e modali (riempito da src/ui/dom) -->
+    <div id="overlay" aria-live="polite"></div>
+
+    <!-- Schermata di avvio -->
+    <div id="boot">
+      <h1 class="boot-mark">
+        <span class="boot-the">The</span>
+        <span class="boot-name">Royal Mirage</span>
+      </h1>
+      <div class="boot-bar" role="progressbar" aria-label="Caricamento"></div>
+      <p id="boot-status">Inizializzazione</p>
+      <p class="boot-legal">
+        Gioco di simulazione con euro virtuali. Il denaro del gioco non ha alcun valore reale: nessun acquisto,
+        nessuna vincita in denaro.
+      </p>
+    </div>
+
+    <div id="fatal">
+      <h2>Impossibile avviare The Royal Mirage</h2>
+      <p id="fatal-msg"></p>
+      <pre id="fatal-detail"></pre>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

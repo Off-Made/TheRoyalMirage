@@ -1,0 +1,604 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   THE ROYAL MIRAGE — Schermate, barra superiore, home
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ══════════════════════════════════════════════════════ SCHERMATA
+ * Home e sala sono a tutta FINESTRA (non nel design space 16:9 dei giochi):
+ * cosi' funzionano anche in verticale e scorrono su schermi bassi.
+ */
+#overlay > .go-screen {
+  position: fixed;
+  inset: 0;
+}
+.go-screen {
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background-color: var(--bg);
+  transition: opacity var(--t-slow) var(--ease-out), visibility var(--t-slow);
+  scrollbar-width: thin;
+  scrollbar-color: var(--plum-line) transparent;
+}
+.go-screen > * {
+  flex: 0 0 auto;
+}
+.go-screen.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.is-hidden {
+  display: none;
+}
+.go-screen.is-hidden {
+  display: flex;
+}
+
+/* ══════════════════════════════════════════════════════ BARRA SUPERIORE */
+.go-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  min-height: 76px;
+  padding: var(--sp-3) var(--gutter);
+  background: linear-gradient(180deg, rgba(var(--plum-abyss-rgb), 0.92), rgba(var(--plum-abyss-rgb), 0.55) 70%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.go-brand {
+  display: grid;
+  justify-items: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  line-height: 0.86;
+  text-transform: uppercase;
+}
+.go-brand__the {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.42em;
+  color: var(--gold-light);
+}
+.go-brand__name {
+  font-family: var(--font-marquee);
+  font-weight: 800;
+  font-size: 1.85rem;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  background: var(--grad-gold-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.go-topbar__nav {
+  display: flex;
+  gap: var(--sp-1);
+}
+.go-navlink {
+  position: relative;
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  background: none;
+  color: var(--text-soft);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: color var(--t-fast);
+}
+.go-navlink:hover {
+  color: var(--text-strong);
+}
+.go-navlink.is-active {
+  color: var(--text-strong);
+}
+.go-navlink.is-active::after {
+  content: '';
+  position: absolute;
+  left: var(--sp-3);
+  right: var(--sp-3);
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--gold-core);
+  box-shadow: 0 0 10px rgba(var(--gold-core-rgb), 0.8);
+}
+
+.go-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-left: auto;
+}
+
+/* Il saldo: pillola d'oro, la cosa piu' leggibile della barra. */
+.go-balance {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 48px;
+  padding: 0 var(--sp-4) 0 var(--sp-2);
+  border-radius: var(--r-pill);
+  background: rgba(var(--plum-raised-rgb), 0.85);
+  border: 1px solid var(--border-gold);
+  box-shadow: var(--sheen-top);
+}
+.go-balance__coin {
+  width: 30px;
+  height: 30px;
+}
+.go-balance__text {
+  display: grid;
+  line-height: 1.05;
+}
+.go-balance__label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-mute);
+}
+.go-balance__value {
+  font-weight: 800;
+  font-size: var(--fs-md);
+  color: var(--gold-light);
+}
+
+.go-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 48px;
+  padding: 0 var(--sp-3) 0 6px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-faint);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.go-profile-btn:hover {
+  background: rgba(var(--plum-high-rgb), 0.6);
+  border-color: var(--border-soft);
+}
+.go-profile-btn__avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--grad-gold);
+  color: var(--text-on-gold);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.15rem;
+}
+.go-profile-btn__text {
+  display: grid;
+  text-align: left;
+  line-height: 1.1;
+}
+.go-profile-btn__label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-mute);
+}
+.go-profile-btn__rank {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+.go-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-faint);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+.go-icon-btn:hover {
+  background: rgba(var(--plum-high-rgb), 0.6);
+  border-color: var(--border-soft);
+}
+.go-icon-btn:active {
+  transform: scale(0.95);
+}
+.go-icon-btn img {
+  width: 26px;
+  height: 26px;
+}
+
+/* Link testuale (es. "Tutti i giochi"). */
+.go-link {
+  padding: var(--sp-1) 0;
+  border: 0;
+  background: none;
+  color: var(--gold-light);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  text-underline-offset: 4px;
+}
+.go-link:hover {
+  text-decoration: underline;
+}
+
+/* ══════════════════════════════════════════════════════ HOME */
+.go-menu {
+  background:
+    linear-gradient(90deg, rgba(var(--plum-base-rgb), 0.96) 0%, rgba(var(--plum-base-rgb), 0.78) 38%, rgba(var(--plum-base-rgb), 0.18) 72%, rgba(var(--plum-base-rgb), 0.4) 100%),
+    linear-gradient(0deg, var(--plum-base) 18%, rgba(var(--plum-base-rgb), 0.6) 42%, rgba(var(--plum-base-rgb), 0) 64%),
+    url('/assets/bg/strip.webp') 62% 30% / cover no-repeat,
+    var(--bg);
+}
+
+.go-menu__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: end;
+  gap: var(--sp-7);
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: clamp(24px, 7vh, 96px) var(--gutter) var(--sp-7);
+  flex: 1 0 auto;
+}
+
+.go-hero {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-5);
+}
+
+/* ── L'insegna
+ * Pannello di velluto rosso con una cornice di lampadine. Le lampadine sono
+ * un unico gradiente radiale ripetuto, mascherato sulla sola fascia del
+ * bordo: nessun elemento per lampadina, nessuna figura disegnata.
+ */
+.go-sign {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  padding: 46px 52px 30px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 40%, rgba(var(--red-core-rgb), 0.55), transparent 75%),
+    linear-gradient(180deg, var(--red-deep), var(--red-shadow));
+  border: 2px solid var(--gold-core);
+  box-shadow:
+    inset 0 0 0 6px rgba(var(--red-shadow-rgb), 0.9),
+    inset 0 0 0 7px rgba(var(--gold-light-rgb), 0.45),
+    0 0 60px rgba(var(--red-core-rgb), 0.35),
+    var(--shadow-lg);
+}
+.go-sign::before {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  padding: 11px;
+  border-radius: 15px;
+  background:
+    radial-gradient(circle, var(--gold-hot) 0 2.4px, rgba(var(--gold-core-rgb), 0.85) 3.4px, rgba(var(--gold-core-rgb), 0) 6px)
+    0 0 / 22px 22px;
+  -webkit-mask: linear-gradient(var(--black) 0 0) content-box, linear-gradient(var(--black) 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(var(--black) 0 0) content-box exclude, linear-gradient(var(--black) 0 0);
+  filter: drop-shadow(0 0 4px rgba(var(--gold-light-rgb), 0.9));
+  animation: go-bulbs-on 1100ms steps(6, end) both;
+  pointer-events: none;
+}
+.go-sign__neon {
+  position: absolute;
+  top: -0.62em;
+  left: 50%;
+  transform: translateX(-50%) rotate(-3deg);
+  padding: 0 0.45em;
+  border-radius: 8px;
+  background: var(--red-deep);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-style: italic;
+  font-size: clamp(1.4rem, 2.6vw, 2.1rem);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: var(--neon-halo);
+  text-shadow: var(--glow-text-neon);
+  animation: go-neon-on 1500ms linear both;
+}
+.go-sign__title {
+  display: grid;
+  justify-items: center;
+  margin: 0;
+  line-height: var(--lh-tight);
+  text-transform: uppercase;
+}
+.go-sign__the {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(0.9rem, 1.6vw, 1.3rem);
+  letter-spacing: 0.6em;
+  margin-right: -0.6em;
+  color: var(--gold-light);
+}
+.go-sign__name {
+  font-family: var(--font-marquee);
+  font-weight: 800;
+  font-size: var(--fs-hero);
+  letter-spacing: 0.035em;
+  background: var(--grad-gold-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(var(--gold-shadow-rgb), 0.9)) drop-shadow(0 0 24px rgba(var(--gold-core-rgb), 0.35));
+}
+
+@keyframes go-bulbs-on {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* Il tubo al neon si accende come uno vero: due sfarfallii e poi fisso. */
+@keyframes go-neon-on {
+  0%,
+  30% {
+    opacity: 0.15;
+  }
+  34% {
+    opacity: 1;
+  }
+  38% {
+    opacity: 0.3;
+  }
+  46% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  56%,
+  100% {
+    opacity: 1;
+  }
+}
+
+.go-hero__tagline {
+  margin: 0;
+  max-width: 42ch;
+  font-size: var(--fs-lg);
+  line-height: 1.45;
+  color: var(--text-soft);
+}
+.go-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+.go-hero__cta {
+  min-width: 220px;
+}
+
+/* ── Card di stato */
+.go-status {
+  display: grid;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  border-radius: var(--r-lg);
+}
+.go-status__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+.go-status__cell {
+  display: grid;
+  gap: 2px;
+}
+.go-status__rank,
+.go-status__mode {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-xl);
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+}
+.go-status__mode {
+  color: var(--text-strong);
+}
+.go-status__progress {
+  display: grid;
+  gap: var(--sp-2);
+}
+.go-status__xp-label {
+  font-size: var(--fs-xs);
+  color: var(--text-mute);
+}
+.go-status__daily {
+  width: 100%;
+}
+.go-status__gift {
+  width: 26px;
+  height: 26px;
+  margin: -4px 0;
+}
+.go-status__daily:disabled {
+  opacity: 0.5;
+}
+.go-status__daily.is-ready {
+  animation: go-ready 2.6s var(--ease-in-out) 1.4s 2;
+}
+@keyframes go-ready {
+  50% {
+    box-shadow: var(--glow-gold-strong);
+  }
+}
+
+/* ── Vetrina */
+.go-showcase {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 var(--gutter) var(--sp-6);
+}
+.go-showcase__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+.go-showcase__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-2xl);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.go-showcase__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.go-tile {
+  display: grid;
+  gap: var(--sp-3);
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.go-tile .go-cover {
+  border-radius: var(--r-md);
+  aspect-ratio: 16 / 9;
+  transition: transform var(--t-base) var(--ease-out), box-shadow var(--t-base) var(--ease-out);
+}
+.go-tile:hover .go-cover,
+.go-tile:focus-visible .go-cover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md), 0 0 0 1px var(--border-gold-strong), var(--glow-gold);
+}
+.go-tile__text {
+  display: grid;
+  gap: 2px;
+}
+.go-tile__name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-lg);
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  color: var(--text-strong);
+}
+.go-tile__tag {
+  font-size: var(--fs-xs);
+  color: var(--text-mute);
+}
+
+/* ── Disclaimer: sempre leggibile, mai nascosto */
+.go-legal {
+  margin: 0 auto;
+  padding: var(--sp-4) var(--gutter) var(--sp-5);
+  max-width: 72ch;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text-mute);
+}
+
+/* ══════════════════════════════════════════════════════ RESPONSIVE */
+@media (max-width: 1100px) {
+  .go-menu__main {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  .go-status {
+    max-width: 520px;
+  }
+  .go-showcase__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .go-topbar {
+    gap: var(--sp-3);
+    min-height: 64px;
+  }
+  .go-topbar__nav,
+  .go-profile-btn__text,
+  .go-balance__label {
+    display: none;
+  }
+  .go-brand__name {
+    font-size: 1.25rem;
+  }
+  .go-balance {
+    height: 42px;
+  }
+  .go-profile-btn,
+  .go-icon-btn {
+    height: 42px;
+  }
+  .go-icon-btn {
+    width: 42px;
+  }
+  .go-menu {
+    background:
+      linear-gradient(0deg, var(--plum-base) 30%, rgba(var(--plum-base-rgb), 0.55) 70%, rgba(var(--plum-base-rgb), 0.75) 100%),
+      url('/assets/bg/strip-m.webp') 50% 0 / auto 62% no-repeat,
+      var(--bg);
+  }
+  .go-menu__main {
+    padding-top: var(--sp-7);
+  }
+  .go-hero {
+    justify-items: stretch;
+  }
+  .go-sign {
+    padding: 28px 22px 22px;
+  }
+  .go-hero__actions .go-btn {
+    flex: 1 1 100%;
+  }
+  .go-showcase__grid {
+    gap: var(--sp-3);
+  }
+}
+
+/* ══════════════════════════════════════════════════════ TELEFONO IN ORIZZONTALE
+ * Su un iPhone girato l'altezza e' ~390 px: l'insegna e la promo, pensate per
+ * un monitor, riempivano da sole il primo schermo e i giochi restavano sotto.
+ */
+@media (max-height: 500px) and (orientation: landscape) {
+  .go-topbar {
+    min-height: 56px;
+    padding-top: max(var(--sp-2), env(safe-area-inset-top));
+    padding-left: max(var(--gutter), env(safe-area-inset-left));
+    padding-right: max(var(--gutter), env(safe-area-inset-right));
+  }
+  .go-menu__main {
+    padding-top: var(--sp-4);
+    gap: var(--sp-4);
+  }
+  .go-hero {
+    gap: var(--sp-3);
+  }
+  .go-sign {
+    padding: 26px 34px 18px;
+    transform-origin: left top;
+  }
+}

@@ -1,0 +1,375 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   THE ROYAL MIRAGE — Contenuti delle modali
+   Profilo, impostazioni, modalita', bonus, esiti, saldo esaurito.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ══════════════════════════════════════════════════════ CELLE STATISTICA */
+.go-pstat {
+  display: grid;
+  gap: 4px;
+  padding: var(--sp-4);
+  border-radius: var(--r-sm);
+  background: var(--plum-base);
+  border: 1px solid var(--border-faint);
+}
+.go-pstat__label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-mute);
+}
+.go-pstat__value {
+  font-weight: 800;
+  font-size: var(--fs-lg);
+  color: var(--text-strong);
+  line-height: 1.1;
+}
+
+/* ══════════════════════════════════════════════════════ PROFILO */
+.go-profile {
+  display: grid;
+  gap: var(--sp-5);
+}
+.go-profile__head {
+  display: grid;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  border-radius: var(--r-md);
+  background:
+    radial-gradient(ellipse 60% 120% at 100% 0%, rgba(var(--gold-core-rgb), 0.14), transparent 70%),
+    var(--plum-base);
+  border: 1px solid var(--border-gold);
+}
+.go-profile__identity {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.go-profile__name-row {
+  display: grid;
+  gap: var(--sp-2);
+  flex: 1 1 260px;
+}
+.go-profile__name {
+  width: 100%;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-xl);
+  letter-spacing: 0.02em;
+}
+.go-profile__rank {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-pill);
+  border: 1px solid;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-lg);
+  letter-spacing: 0.03em;
+  background: rgba(var(--plum-abyss-rgb), 0.6);
+}
+.go-profile__xp-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.go-profile__xp {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-soft);
+}
+.go-profile__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+.go-profile__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-5);
+}
+
+/* ── Scala dei ranghi */
+.go-ladder {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--sp-2);
+}
+.go-ladder__item {
+  display: grid;
+  gap: 2px;
+  padding: var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-faint);
+  background: var(--plum-base);
+  opacity: 0.55;
+}
+.go-ladder__item.is-reached {
+  opacity: 1;
+}
+.go-ladder__item.is-current {
+  border-color: var(--tier-color);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--tier-color) 30%, transparent);
+}
+.go-ladder__name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-md);
+  letter-spacing: 0.02em;
+  color: var(--tier-color);
+}
+.go-ladder__xp {
+  font-size: var(--fs-xs);
+  color: var(--text-mute);
+}
+
+/* ── Riconoscimenti */
+.go-trophies + .go-trophies {
+  margin-top: var(--sp-4);
+}
+.go-trophies__group {
+  display: block;
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-soft);
+}
+.go-trophies__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-2);
+}
+.go-trophy {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: var(--sp-3);
+  align-items: center;
+  padding: var(--sp-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-faint);
+  background: var(--plum-base);
+}
+.go-trophy__icon {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--plum-high);
+  color: var(--text-mute);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+.go-trophy__name {
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: var(--text-soft);
+}
+.go-trophy__desc {
+  font-size: var(--fs-xs);
+  color: var(--text-mute);
+}
+.go-trophy.is-on {
+  border-color: var(--border-gold);
+}
+.go-trophy.is-on .go-trophy__icon {
+  background: var(--grad-gold);
+  color: var(--text-on-gold);
+}
+.go-trophy.is-on .go-trophy__name {
+  color: var(--text-strong);
+}
+
+/* ── Storico */
+.go-history {
+  display: grid;
+  gap: 1px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-faint);
+}
+.go-hrow {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--plum-base);
+  font-size: var(--fs-sm);
+}
+.go-hrow:nth-child(even) {
+  background: var(--surface-1);
+}
+.go-hrow__game {
+  font-weight: 700;
+}
+.go-hrow__bet,
+.go-hrow__balance {
+  color: var(--text-soft);
+  text-align: right;
+}
+.go-hrow__amount {
+  font-weight: 800;
+  text-align: right;
+}
+
+/* ══════════════════════════════════════════════════════ MODALITA' */
+.go-modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+.go-mode {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-faint);
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(var(--mode-accent-rgb), 0.16), transparent 70%),
+    var(--plum-base);
+  transition: border-color var(--t-base), transform var(--t-base) var(--ease-out);
+}
+.go-mode:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--mode-accent-rgb), 0.6);
+}
+.go-mode.is-active {
+  border-color: rgba(var(--mode-accent-rgb), 0.9);
+  box-shadow: 0 0 24px rgba(var(--mode-accent-rgb), 0.22);
+}
+.go-mode__glyph {
+  width: 64px;
+  height: 64px;
+}
+.go-mode__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-xl);
+  letter-spacing: 0.02em;
+}
+.go-mode__desc {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-soft);
+  flex: 1 1 auto;
+}
+.go-mode__wallet,
+.go-mode__goal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--border-faint);
+}
+.go-mode__wallet-label,
+.go-mode__goal-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-mute);
+}
+.go-mode__wallet-value,
+.go-mode__goal-value {
+  font-weight: 800;
+  color: var(--text-strong);
+}
+.go-mode__btn {
+  width: 100%;
+}
+
+/* ══════════════════════════════════════════════════════ IMPOSTAZIONI */
+.go-settings__renderer {
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: var(--text-soft);
+}
+
+/* ══════════════════════════════════════════════════════ BONUS / ESITI */
+.go-reward,
+.go-outcome,
+.go-broke {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) 0;
+  text-align: center;
+}
+.go-reward__icon,
+.go-outcome__icon {
+  width: 112px;
+  height: 112px;
+  filter: drop-shadow(0 12px 20px rgba(var(--plum-abyss-rgb), 0.7));
+  animation: go-pop 520ms var(--ease-back) both;
+}
+.go-reward__amount {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: var(--fs-3xl);
+  line-height: 1;
+}
+.go-reward__note,
+.go-outcome__msg,
+.go-broke__msg {
+  margin: 0;
+  max-width: 44ch;
+  color: var(--text-soft);
+}
+.go-outcome__actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+.go-broke__seal {
+  font-size: 3rem;
+  line-height: 1;
+}
+.go-broke__residual {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-mute);
+}
+.go-broke__foot {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.go-broke__cta {
+  min-width: 300px;
+}
+
+@keyframes go-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+/* ══════════════════════════════════════════════════════ RESPONSIVE */
+@media (max-width: 760px) {
+  .go-modes {
+    grid-template-columns: 1fr;
+  }
+  .go-profile__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .go-hrow {
+    grid-template-columns: 1.4fr 1fr 1fr;
+  }
+  .go-hrow__balance {
+    display: none;
+  }
+  .go-field {
+    flex-wrap: wrap;
+  }
+  .go-panel__head,
+  .go-panel__body,
+  .go-modal__foot {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+}

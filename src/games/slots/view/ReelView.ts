@@ -1,0 +1,192 @@
+/**
+ * THE ROYAL MIRAGE — Un rullo
+ *
+ * Il rullo e' un NASTRO: `pos` e' una posizione continua, in celle, lungo
+ * la striscia. La cella in alto mostra `strip[floor(pos)]`, spostata in
+ * basso della parte frazionaria. Girare = far decrescere `pos`; fermarsi =
+ * portare `pos` esattamente sullo stop deciso dal motore.
+ *
+ * Usa `rows + 2` sprite riciclati (uno sopra e uno sotto la finestra), a
+ * cui cambia solo la texture: nessuna allocazione durante il giro.
+ */
+
+import { PALETTE } from '@/art/palette';
+import { BlurFilter, Container, Graphics, Sprite, type Texture } from 'pixi.js';
+import { gsap } from 'gsap';
+import type { SymId } from '../engine/types';
+
+export interface ReelViewOptions {
+  index: number;
+  rows: number;
+  cellW: number;
+  cellH: number;
+  texture: (id: SymId) => Texture;
+  /** Scala dello sprite dentro la cella. */
+  symbolScale: number;
+  blur: boolean;
+}
+
+type ReelState = 'idle' | 'starting' | 'spinning' | 'stopping';
+
+export class ReelView extends Container {
+  readonly strip: SymId[] = [];
+  private sprites: Sprite[] = [];
+  private symbols = new Container();
+  private blurFilter: BlurFilter | null = null;
+  private pos = 0;
+  private speed = 0;
+  private state: ReelState = 'idle';
+  private stopTween: gsap.core.Tween | null = null;
+
+  /** Velocita' a regime in celle/secondo. */
+  maxSpeed = 17;
+
+  constructor(private o: ReelViewOptions) {
+    super();
+    this.label = `reel-${o.index}`;
+    const mask = new Graphics().rect(0, 0, o.cellW, o.cellH * o.rows).fill(PALETTE.white);
+    this.addChild(mask, this.symbols);
+    this.symbols.mask = mask;
+    for (let i = 0; i < o.rows + 2; i++) {
+      const s = new Sprite();
+      s.anchor.set(0.5);
+      s.scale.set(o.symbolScale);
+      s.x = o.cellW / 2;
+      this.sprites.push(s);
+      this.symbols.addChild(s);
+    }
+    if (o.blur) {
+      this.blurFilter = new BlurFilter({ strength: 0, quality: 2 });
+      this.blurFilter.strengthX = 0;
+    }
+  }
+
+  get isIdle(): boolean {
+    return this.state === 'idle';
+  }
+
+  /** Sostituisce la striscia (base ↔ giri gratis) e si posiziona su `stop`. */
+  setStrip(strip: readonly SymId[], stop = 0): void {
+    this.strip.length = 0;
+    this.strip.push(...strip);
+    this.pos = stop;
+    this.layout();
+  }
+
+  /**
+   * Sostituisce la striscia senza scatti visivi: tiene la stessa posizione
+   * modulo la nuova lunghezza. Va chiamata solo a rullo in moto (col blur
+   * il cambio di simboli e' invisibile).
+   */
+  swapStrip(strip: readonly SymId[]): void {
+    this.strip.length = 0;
+    this.strip.push(...strip);
+    this.pos = this.pos % strip.length;
+  }
+
+  private sym(i: number): SymId {
+    const L = this.strip.length;
+    return this.strip[((i % L) + L) % L]!;
+  }
+
+  /** Sprite della riga visibile `row` (rullo fermo). */
+  cell(row: number): Sprite {
+    return this.sprites[row + 1]!;
+  }
+
+  /** Simbolo mostrato alla riga `row` adesso. */
+  symbolAt(row: number): SymId {
+    return this.sym(Math.round(this.pos) + row);
+  }
+
+  /** Sostituisce la texture di una cella ferma (es. moneta con valore). */
+  setCellTexture(row: number, tex: Texture): void {
+    this.cell(row).texture = tex;
+  }
+
+  private layout(): void {
+    const base = Math.floor(this.pos);
+    const frac = this.pos - base;
+    const { cellH } = this.o;
+    for (let j = -1; j <= this.o.rows; j++) {
+      const s = this.sprites[j + 1]!;
+      s.texture = this.o.texture(this.sym(base + j));
+      s.y = (j - frac) * cellH + cellH / 2;
+    }
+  }
+
+  /** Avvio con piccolo "caricamento" all'indietro, come un rullo meccanico. */
+  start(delay = 0): void {
+    this.stopTween?.kill();
+    for (const s of this.sprites) {
+      gsap.killTweensOf(s.scale);
+      s.scale.set(this.o.symbolScale);
+      s.alpha = 1;
+      s.tint = PALETTE.white;
+    }
+    this.state = 'starting';
+    gsap.to(this, {
+      pos: this.pos + 0.28,
+      duration: 0.14,
+      delay,
+      ease: 'power1.out',
+      onComplete: () => {
+        this.state = 'spinning';
+        this.speed = 0;
+        gsap.to(this, { speed: this.maxSpeed, duration: 0.18, ease: 'power2.in' });
+      },
+    });
+  }
+
+  /**
+   * Ferma il rullo sullo stop `stop` dopo almeno `minCells` celle di corsa.
+   * Il rimbalzo finale (back.out) e' cio' che da' peso al rullo.
+   */
+  stopAt(stop: number, minCells = 4): Promise<void> {
+    return new Promise((resolve) => {
+      const go = () => {
+        gsap.killTweensOf(this, 'speed');
+        const L = this.strip.length;
+        // Il piu' grande P <= pos - minCells con P ≡ stop (mod L).
+        let target = Math.floor(this.pos - minCells);
+        const diff = (((target - stop) % L) + L) % L;
+        target -= diff;
+        const dist = this.pos - target;
+        const v = Math.max(this.speed, 6);
+        this.state = 'stopping';
+        this.stopTween = gsap.to(this, {
+          pos: target,
+          duration: Math.max(0.22, (dist / v) * 1.55),
+          ease: 'back.out(1.6)',
+          onComplete: () => {
+            this.pos = stop;
+            this.speed = 0;
+            this.state = 'idle';
+            this.stopTween = null;
+            this.layout();
+            resolve();
+          },
+        });
+      };
+      // Uno stop chiesto durante il "caricamento" aspetta che il rullo giri.
+      if (this.state === 'starting') {
+        const wait = () => (this.state === 'starting' ? requestAnimationFrame(wait) : go());
+        wait();
+      } else go();
+    });
+  }
+
+  update(dt: number): void {
+    if (this.state === 'spinning') this.pos -= this.speed * dt;
+    if (this.state !== 'idle') this.layout();
+
+    if (this.blurFilter) {
+      // Blur verticale proporzionale alla velocita': a rullo lento i simboli
+      // tornano nitidi PRIMA di fermarsi, cosi' l'occhio legge l'esito.
+      const v = this.state === 'spinning' ? this.speed : this.state === 'stopping' ? this.speed * 0.4 : 0;
+      const k = Math.min(1, v / this.maxSpeed);
+      this.blurFilter.strengthY = k * 14;
+      this.symbols.filters = k > 0.05 ? [this.blurFilter] : [];
+    }
+  }
+}
