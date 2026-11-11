@@ -30,7 +30,9 @@ import { makeText } from './text';
 
 const TIER_INDEX: Record<WinTierName, number> = { normal: 0, big: 1, mega: 2, epic: 3, legendary: 4 };
 /** Secondi di conteggio per livello. */
-const COUNT_TIME: Record<WinTierName, number> = { normal: 0.6, big: 2.4, mega: 3.4, epic: 4.6, legendary: 6.2 };
+// Accorciati di ~40% su richiesta del committente ("troppo lento"): la
+// festa resta, ma non trattiene il giocatore.
+const COUNT_TIME: Record<WinTierName, number> = { normal: 0.6, big: 1.4, mega: 2.0, epic: 2.8, legendary: 3.8 };
 
 export interface PresentOptions {
   /** Punto di partenza della cifra flottante (vincite normali). */
@@ -154,9 +156,9 @@ export class WinPresenter extends Container {
           resolve();
         },
       });
-      tl.to(label.scale, { x: 1, y: 1, duration: 0.35, ease: 'back.out(2.4)' })
-        .to(label, { y: y - 90, duration: 1.1, ease: 'power2.out' }, 0)
-        .to(label, { alpha: 0, duration: 0.35 }, 0.85);
+      tl.to(label.scale, { x: 1, y: 1, duration: 0.25, ease: 'back.out(2.4)' })
+        .to(label, { y: y - 80, duration: 0.75, ease: 'power2.out' }, 0)
+        .to(label, { alpha: 0, duration: 0.25 }, 0.5);
       this.active = { finish: () => tl.progress(1) };
     });
   }
@@ -270,7 +272,7 @@ export class WinPresenter extends Container {
             layer.destroy({ children: true });
             resolve();
           },
-        }).to(layer, { alpha: 0, duration: 0.45, ease: 'power2.in' });
+        }).to(layer, { alpha: 0, duration: 0.3, ease: 'power2.in' });
       };
 
       const finish = () => {
@@ -281,12 +283,12 @@ export class WinPresenter extends Container {
         tl.progress(1);
         amount.text = formatMoney(payout);
         gsap.fromTo(amount.scale, { x: 1.18, y: 1.18 }, { x: 1, y: 1, duration: 0.4, ease: 'back.out(3)' });
-        gsap.delayedCall(0.9, close);
+        gsap.delayedCall(0.6, close);
       };
 
       // Fine naturale: mantiene la cifra piena un istante prima di chiudere.
       tl.eventCallback('onComplete', () => {
-        gsap.delayedCall(1.1, finish);
+        gsap.delayedCall(0.7, finish);
       });
       veil.on('pointerdown', finish);
       this.active = { finish };

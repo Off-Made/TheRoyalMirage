@@ -38,6 +38,9 @@ import { Container, Graphics, Sprite, Text } from 'pixi.js';
 import { gsap } from 'gsap';
 import { GameScene, type SceneHudOptions } from '@/games/common/GameScene';
 import { HUD_TOP } from '@/games/common/GameHud';
+import { flightTone, type FlightRecord } from './history';
+import type { TutorialStep } from '@/ui/dom/Tutorial';
+
 import { makeText } from '@/games/common/text';
 import { button, div, el } from '@/ui/dom/el';
 import { PALETTE } from '@/art/palette';
@@ -105,12 +108,20 @@ export class CrashScene extends GameScene {
   private autoInput!: HTMLInputElement;
   private autoBtn!: HTMLButtonElement;
 
-  private readonly history: number[] = [];
+  private readonly history: FlightRecord[] = [];
 
   // Grafica
   private curve = new Graphics();
   private multText!: Text;
   private statusText!: Text;
+  /**
+   * Indicatore del punto di schianto, accanto al moltiplicatore: compare a
+   * fine giro (anche dopo un incasso) con il solo numero, per vedere fin
+   * dove sarebbe arrivato il volo.
+   */
+  private crashBadge = new Container();
+  private crashBadgeBg = new Graphics();
+  private crashBadgeText!: Text;
   private falcon = new Container();
   private falconBody!: Sprite;
   private wingNear!: Sprite;
@@ -174,6 +185,10 @@ export class CrashScene extends GameScene {
     this.statusText.anchor.set(0, 0.5);
     this.statusText.position.set(PANEL.x + 76, PANEL.y + 44);
     this.world.addChild(this.statusText, this.multText);
+    this.crashBadgeText = makeText('', 'value', 40);
+    this.crashBadge.addChild(this.crashBadgeBg, this.crashBadgeText);
+    this.crashBadge.visible = false;
+    this.world.addChild(this.crashBadge);
 
     this.buildFalcon();
 
@@ -246,8 +261,9 @@ export class CrashScene extends GameScene {
     }
     const gap = 112;
     const n = this.history.length;
-    this.history.forEach((c, i) => {
-      const hot = c >= 200;
+    this.history.forEach((rec, i) => {
+      const hot = flightTone(rec) === 'win';
+      const c = rec.crash;
       // Il testo va in un Container ACCANTO allo sfondo, non dentro di esso:
       // in Pixi 8 un Graphics non e' piu' un genitore legittimo (per ora e'
       // solo un avviso di deprecazione, ma il gruppo serve comunque per
@@ -256,12 +272,19 @@ export class CrashScene extends GameScene {
       pill.addChild(
         new Graphics()
           .roundRect(-48, -18, 96, 36, 18)
-          .fill({ color: PALETTE.text.strong, alpha: 0.84 })
-          .stroke({ color: hot ? PALETTE.win.core : PALETTE.red.core, alpha: 0.75, width: 1.5 }),
+          .fill({ color: PALETTE.plum.lifted, alpha: 0.92 })
+          .stroke({ color: hot ? PALETTE.win.core : PALETTE.red.core, alpha: 0.9, width: 2 }),
         makeText(`${fmtMult(c)}×`, 'value', 22, {
           fill: hot ? PALETTE.win.light : PALETTE.red.light,
         })
       );
+      if (rec.cashedAt !== null) {
+        // Sotto la pillola, quanto si era incassato: il numero grande resta
+        // il crash, cioe' la storia pubblica del gioco.
+        const got = makeText(`${fmtMult(rec.cashedAt)}×`, 'small', 16, { fill: PALETTE.win.light });
+        got.position.set(0, 32);
+        pill.addChild(got);
+      }
       pill.x = (i - (n - 1) / 2) * gap;
       this.historyRow.addChild(pill);
     });
@@ -364,6 +387,8 @@ export class CrashScene extends GameScene {
     this.hud.setWin(0);
     this.hud.setPrimary(cs('launching'), { enabled: false });
     this.hud.message(cs('launching'));
+    // L'indicatore del volo precedente resta fino al decollo successivo.
+    this.crashBadge.visible = false;
     this.resetFlightVisuals();
 
     let decided: number;
@@ -438,13 +463,14 @@ export class CrashScene extends GameScene {
     // Il tabellone registra dove il volo SI SAREBBE schiantato, non dove si
     // e' incassato: e' la storia del gioco, non del giocatore. Il valore e'
     // pubblico da qui in poi, perche' il seme viene rivelato subito sotto.
-    this.history.unshift(this.crashCents);
+    this.history.unshift({ crash: this.crashCents, cashedAt: cashed ? cents : null });
     if (this.history.length > HISTORY_MAX) this.history.length = HISTORY_MAX;
     this.renderHistory();
     this.multText.text = `${fmtMult(cents)}×`;
     this.multText.style.fill = cashed ? PALETTE.win.light : PALETTE.red.light;
     this.statusText.text = (cashed ? cs('cashedShort', { m: fmtMult(cents) }) : cs('crashed', { m: fmtMult(cents) })).toUpperCase();
     this.drawCurve(cashed ? PALETTE.win.core : PALETTE.red.core);
+    this.showCrashBadge(cashed);
     this.falcon.visible = cashed;
     this.tipFlare.alpha = 0;
     this.tipGlow.alpha = 0;
@@ -478,6 +504,7 @@ export class CrashScene extends GameScene {
     this.hud.lockBet(false);
     this.hud.setPrimary(cs('fly'), { enabled: this.fairReady, variant: 'primary' });
     this.resetFlightVisuals();
+    if (this.crashBadge.visible) this.placeCrashBadge();
     this.hud.message(this.autoCents > 0 ? cs('autoOn', { m: fmtMult(this.autoCents) }) : cs('placeBet'));
   }
 
@@ -670,6 +697,31 @@ export class CrashScene extends GameScene {
     }
   }
 
+  /** Il moltiplicatore cambia larghezza (es. torna a 1.00×): l'indicatore lo segue. */
+  private placeCrashBadge(): void {
+    const w = this.crashBadgeBg.width;
+    this.crashBadge.position.set(this.multText.x + this.multText.width + 36 + w / 2, this.multText.y);
+  }
+
+  /** Pillola col solo numero del crash, a destra del moltiplicatore. */
+  private showCrashBadge(cashed: boolean): void {
+    const tone = cashed ? PALETTE.gold : PALETTE.red;
+    this.crashBadgeText.text = `${fmtMult(this.crashCents)}×`;
+    this.crashBadgeText.style.fill = tone.light;
+    const w = Math.max(150, this.crashBadgeText.width + 48);
+    const h = 64;
+    this.crashBadgeBg
+      .clear()
+      .roundRect(-w / 2, -h / 2, w, h, h / 2)
+      .fill({ color: PALETTE.plum.lifted, alpha: 0.92 })
+      .stroke({ color: tone.core, alpha: 0.85, width: 2 });
+    this.placeCrashBadge();
+    this.crashBadge.visible = true;
+    gsap.killTweensOf(this.crashBadge.scale);
+    this.crashBadge.scale.set(0.6);
+    gsap.to(this.crashBadge.scale, { x: 1, y: 1, duration: 0.25, ease: 'back.out(2)' });
+  }
+
   private resetFlightVisuals(): void {
     this.trail = [[0, 100]];
     this.cents = 100;
@@ -725,6 +777,14 @@ export class CrashScene extends GameScene {
   }
 
   // ═══════════════════════════════════════════════ MODALE REGOLE
+
+  protected tutorialGame(): TutorialStep[] {
+    return [
+      { title: cs('tutFlightT'), text: cs('tutFlightX'), target: this.designTarget(PANEL.x, PANEL.y, PANEL.w, PANEL.h) },
+      { title: cs('tutAutoT'), text: cs('tutAutoX'), target: '.go-hud__extra' },
+      { title: cs('tutHistT'), text: cs('tutHistX'), target: this.designTarget(PANEL.x, PANEL.y + PANEL.h + 24, PANEL.w, 100) },
+    ];
+  }
 
   protected rules(): Node {
     const info = gameById(this.gameId);

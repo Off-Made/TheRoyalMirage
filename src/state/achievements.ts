@@ -17,6 +17,7 @@
  */
 
 import { bus } from './events';
+import { GAMES } from '@/games/registry';
 import type { WalletState } from './wallet';
 import type { ProgressionState } from './progression';
 
@@ -49,7 +50,7 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
   { id: 'spins_1000', icon: '❂', reward: 2_500, group: 'play', check: (c) => c.wallet.spins >= 1_000 },
   { id: 'spins_10000', icon: '✺', reward: 20_000, group: 'play', check: (c) => c.wallet.spins >= 10_000 },
   { id: 'explorer_3', icon: '⌖', reward: 500, group: 'play', check: (c) => c.progression.gamesPlayed.length >= 3 },
-  { id: 'explorer_all', icon: '✪', reward: 5_000, group: 'play', check: (c) => c.progression.gamesPlayed.length >= 8 },
+  { id: 'explorer_all', icon: '✪', reward: 5_000, group: 'play', check: (c) => c.progression.gamesPlayed.length >= GAMES.length },
   { id: 'high_roller', icon: '♛', reward: 2_000, group: 'play', check: (c) => (c.last?.bet ?? 0) >= 5_000 },
 
   // ── Vincite

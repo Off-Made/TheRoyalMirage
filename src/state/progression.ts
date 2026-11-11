@@ -23,20 +23,33 @@ export interface VipTier {
 }
 
 /**
- * Otto ranghi. La curva di XP e' geometrica (~x2,6 per livello): i primi
- * ranghi arrivano in pochi minuti per dare slancio, gli ultimi richiedono
- * ore di gioco. E' la stessa forma usata dai giochi a progressione lunga.
+ * Otto ranghi oltre l'ospite. L'XP si guadagna a GIRO (vedi `xpForWager`),
+ * circa 15-60 XP l'uno: il primo rango arriva in una cinquantina di giri, il
+ * vertice in ~70 ore di gioco. La curva e' ~x2,5 per rango.
+ *
+ * Prima l'XP valeva 1 per centesimo puntato e i premi superavano la perdita
+ * attesa: con puntate alte si arrivava al vertice in tre giorni (30 milioni
+ * di XP) e ogni premio finanziava la puntata successiva. Ora i premi sono un
+ * riconoscimento, non un motore di ricarica.
  */
 export const VIP_TIERS: readonly VipTier[] = [
   { level: 0, key: 'vip.guest',     xp: 0,         color: PALETTE.tier.guest, reward: 0 },
-  { level: 1, key: 'vip.merchant',  xp: 2_500,     color: PALETTE.tier.bronze, reward: 2_500 },
-  { level: 2, key: 'vip.trader',    xp: 10_000,    color: PALETTE.tier.silver, reward: 7_500 },
-  { level: 3, key: 'vip.noble',     xp: 35_000,    color: PALETTE.tier.gold, reward: 20_000 },
-  { level: 4, key: 'vip.emir',      xp: 120_000,   color: PALETTE.tier.platinum, reward: 60_000 },
-  { level: 5, key: 'vip.vizier',    xp: 400_000,   color: PALETTE.tier.sapphire, reward: 180_000 },
-  { level: 6, key: 'vip.prince',    xp: 1_200_000, color: PALETTE.tier.diamond, reward: 500_000 },
-  { level: 7, key: 'vip.sheikh',    xp: 4_000_000, color: PALETTE.tier.blackCard, reward: 2_000_000 },
-  { level: 8, key: 'vip.sultan',    xp: 12_000_000, color: PALETTE.tier.legend, reward: 10_000_000 },
+  { level: 1, key: 'vip.merchant',  xp: 1_500,     color: PALETTE.tier.bronze, reward: 1_000 },
+  { level: 2, key: 'vip.trader',    xp: 6_000,     color: PALETTE.tier.silver, reward: 2_500 },
+  { level: 3, key: 'vip.noble',     xp: 20_000,    color: PALETTE.tier.gold, reward: 5_000 },
+  { level: 4, key: 'vip.emir',      xp: 60_000,    color: PALETTE.tier.platinum, reward: 10_000 },
+  { level: 5, key: 'vip.vizier',    xp: 150_000,   color: PALETTE.tier.sapphire, reward: 20_000 },
+  { level: 6, key: 'vip.prince',    xp: 350_000,   color: PALETTE.tier.diamond, reward: 40_000 },
+  { level: 7, key: 'vip.sheikh',    xp: 800_000,   color: PALETTE.tier.blackCard, reward: 80_000 },
+  { level: 8, key: 'vip.sultan',    xp: 1_700_000, color: PALETTE.tier.legend, reward: 150_000 },
+];
+
+/**
+ * Soglie della curva PRECEDENTE (1 XP per centesimo). Servono solo alla
+ * migrazione del salvataggio v2 → v3, per capire che rango aveva il giocatore.
+ */
+export const LEGACY_TIER_XP: readonly number[] = [
+  0, 2_500, 10_000, 35_000, 120_000, 400_000, 1_200_000, 4_000_000, 12_000_000,
 ];
 
 export interface ProgressionState {
@@ -50,6 +63,8 @@ export interface ProgressionState {
   achievements: string[];
   /** ID dei giochi giocati almeno una volta. */
   gamesPlayed: string[];
+  /** ID dei giochi di cui si e' gia' visto (o chiuso) il tutorial. */
+  tutorialsSeen: string[];
 }
 
 export function initialProgression(): ProgressionState {
@@ -60,12 +75,32 @@ export function initialProgression(): ProgressionState {
     lastBonusDay: '',
     achievements: [],
     gamesPlayed: [],
+    tutorialsSeen: [],
   };
 }
 
-/** XP guadagnata puntando `bet` fiche. 1 XP ogni fiche puntata. */
+/**
+ * XP di UN giro con puntata `bet` (centesimi). Cresce col logaritmo della
+ * puntata: giocare conta piu' di quanto si punta.
+ *   1 € → 18 · 10 € → 37 · 100 € → 63 · 1.000 € → 89
+ * Una puntata mille volte piu' grande vale solo cinque volte tanto.
+ */
 export function xpForWager(bet: number): number {
-  return Math.max(1, Math.round(bet));
+  const b = Math.max(0, Number.isFinite(bet) ? bet : 0);
+  return 10 + Math.floor(8 * Math.log2(1 + b / 100));
+}
+
+/**
+ * Rango salvato con la vecchia curva → XP con la curva nuova: si conserva il
+ * rango raggiunto, all'inizio della sua fascia. Nessun premio viene ripagato
+ * (il livello salvato resta lo stesso, `grantXp` premia solo i salti).
+ */
+export function migrateLegacyXp(oldXp: number): { xp: number; level: number } {
+  let level = 0;
+  LEGACY_TIER_XP.forEach((t, i) => {
+    if (oldXp >= t) level = i;
+  });
+  return { xp: VIP_TIERS[level]!.xp, level };
 }
 
 export function tierFor(xp: number): VipTier {

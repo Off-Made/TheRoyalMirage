@@ -66,6 +66,12 @@ export class VideoPokerMachine {
     this.phase = 'hold';
   }
 
+  /** Tiene tutte le carte (modalita' "tocca per scartare"). */
+  holdAll(): void {
+    if (this.phase !== 'hold') return;
+    this.held = [true, true, true, true, true];
+  }
+
   /** Tiene/rilascia una carta. Falso se ora non si puo'. */
   toggle(i: number): boolean {
     if (this.phase !== 'hold' || i < 0 || i > 4) return false;

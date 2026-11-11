@@ -71,6 +71,48 @@ export interface Transaction {
   balance: number;
 }
 
+/** Statistiche di un singolo gioco, nella modalita' corrente. */
+export interface GameStats {
+  game: string;
+  /** Giocate (raddoppi, divisioni e assicurazioni non contano a parte). */
+  rounds: number;
+  /** Centesimi puntati, costi aggiuntivi inclusi. */
+  wagered: number;
+  /** Centesimi vinti (lordi). */
+  won: number;
+  biggestWin: number;
+  /** Timestamp epoch ms dell'ultima giocata. */
+  lastPlayed: number;
+}
+
+/**
+ * Aggiorna (o crea) la riga di `game`. E' un ARRAY e non una mappa per una
+ * ragione pratica: il merge del salvataggio conserva gli array per intero,
+ * mentre di un oggetto terrebbe solo le chiavi presenti nei default.
+ */
+export function bumpStats(
+  stats: readonly GameStats[],
+  game: string,
+  delta: { rounds?: number; wagered?: number; won?: number },
+  at = Date.now()
+): GameStats[] {
+  const i = stats.findIndex((s) => s.game === game);
+  const cur: GameStats = i >= 0 ? stats[i]! : { game, rounds: 0, wagered: 0, won: 0, biggestWin: 0, lastPlayed: 0 };
+  const won = delta.won ?? 0;
+  const next: GameStats = {
+    ...cur,
+    rounds: cur.rounds + (delta.rounds ?? 0),
+    wagered: cur.wagered + (delta.wagered ?? 0),
+    won: cur.won + won,
+    biggestWin: Math.max(cur.biggestWin, won),
+    lastPlayed: at,
+  };
+  const out = [...stats];
+  if (i >= 0) out[i] = next;
+  else out.push(next);
+  return out;
+}
+
 export interface WalletState {
   balance: number;
   bet: number;
@@ -81,6 +123,8 @@ export interface WalletState {
   spins: number;
   /** Ultime N transazioni, per lo storico a schermo. */
   history: Transaction[];
+  /** Statistiche per gioco (una riga per gioco giocato). */
+  stats: GameStats[];
 }
 
 export const HISTORY_LIMIT = 60;
@@ -95,6 +139,7 @@ export function initialWallet(): WalletState {
     biggestWin: 0,
     spins: 0,
     history: [],
+    stats: [],
   };
 }
 

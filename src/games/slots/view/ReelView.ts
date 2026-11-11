@@ -28,6 +28,23 @@ export interface ReelViewOptions {
 
 type ReelState = 'idle' | 'starting' | 'spinning' | 'stopping';
 
+/**
+ * Piano d'arresto: da dove ripartire e dove arrivare.
+ *
+ * Il motore ha gia' deciso lo stop; il rullo deve solo ARRIVARCI. Prima si
+ * cercava lo stop "piu' vicino davanti" lungo la striscia vera, che poteva
+ * stare fino a un giro intero piu' in la' (47-72 celle): 2-4 secondi per
+ * rullo. Ora, a rullo lanciato e sfocato, il nastro viene riposizionato
+ * `minCells` celle prima dello stop (conservando la parte frazionaria, cosi'
+ * le celle non saltano di mezza altezza) e la frenata e' sempre corta.
+ * Le ultime celle che scorrono sono quelle vere della striscia: l'arrivo e'
+ * autentico, solo il tratto "in volo" e' accorciato. L'esito non cambia.
+ */
+export function stopPlan(pos: number, stop: number, minCells: number): { from: number; to: number } {
+  const frac = pos - Math.floor(pos);
+  return { from: stop + minCells + frac, to: stop };
+}
+
 export class ReelView extends Container {
   readonly strip: SymId[] = [];
   private sprites: Sprite[] = [];
@@ -139,25 +156,20 @@ export class ReelView extends Container {
   }
 
   /**
-   * Ferma il rullo sullo stop `stop` dopo almeno `minCells` celle di corsa.
-   * Il rimbalzo finale (back.out) e' cio' che da' peso al rullo.
+   * Ferma il rullo sullo stop `stop` dopo `minCells` celle di corsa, in
+   * `duration` secondi. Il rimbalzo finale (back.out) da' peso al rullo.
    */
-  stopAt(stop: number, minCells = 4): Promise<void> {
+  stopAt(stop: number, minCells = 3, duration = 0.3): Promise<void> {
     return new Promise((resolve) => {
       const go = () => {
         gsap.killTweensOf(this, 'speed');
-        const L = this.strip.length;
-        // Il piu' grande P <= pos - minCells con P ≡ stop (mod L).
-        let target = Math.floor(this.pos - minCells);
-        const diff = (((target - stop) % L) + L) % L;
-        target -= diff;
-        const dist = this.pos - target;
-        const v = Math.max(this.speed, 6);
+        const { from, to: target } = stopPlan(this.pos, stop, minCells);
+        this.pos = from;
         this.state = 'stopping';
         this.stopTween = gsap.to(this, {
           pos: target,
-          duration: Math.max(0.22, (dist / v) * 1.55),
-          ease: 'back.out(1.6)',
+          duration,
+          ease: 'back.out(1.3)',
           onComplete: () => {
             this.pos = stop;
             this.speed = 0;

@@ -294,3 +294,39 @@ describe('saldo esaurito', () => {
     expect(balance()).toBe(before);
   });
 });
+
+import { xpForWager } from '@/state/progression';
+
+describe('XP a giro', () => {
+  it('cresce col logaritmo della puntata', () => {
+    expect(xpForWager(100)).toBe(18);
+    expect(xpForWager(1_000)).toBe(37);
+    expect(xpForWager(10_000)).toBe(63);
+    expect(xpForWager(100_000)).toBe(89);
+  });
+  it('una puntata 1000 volte piu grande vale meno di 6 volte tanto', () => {
+    expect(xpForWager(100_000) / xpForWager(100)).toBeLessThan(6);
+  });
+});
+
+import { bumpStats } from '@/state/wallet';
+
+describe('statistiche per gioco', () => {
+  it('puntata e vincita si sommano sulla riga del gioco giusto', () => {
+    let s = bumpStats([], 'roulette', { rounds: 1, wagered: 500 }, 1);
+    s = bumpStats(s, 'blackjack', { rounds: 1, wagered: 200 }, 2);
+    s = bumpStats(s, 'roulette', { won: 1_800 }, 3);
+    const r = s.find((x) => x.game === 'roulette')!;
+    expect(r).toMatchObject({ rounds: 1, wagered: 500, won: 1_800, biggestWin: 1_800, lastPlayed: 3 });
+    expect(s.find((x) => x.game === 'blackjack')!.won).toBe(0);
+  });
+  it('placeBet e settle aggiornano le statistiche del gioco', () => {
+    S.actions.placeBet('crash', 300);
+    S.actions.placeBet('crash', 300, { countRound: false });
+    S.actions.settle('crash', 600, 900);
+    const r = S.wallet().stats.find((x) => x.game === 'crash')!;
+    expect(r.rounds).toBe(1);
+    expect(r.wagered).toBe(600);
+    expect(r.won).toBe(900);
+  });
+});

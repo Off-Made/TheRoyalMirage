@@ -145,3 +145,17 @@ describe('distribuzione (Monte Carlo)', () => {
     }
   });
 });
+
+import { flightTone } from '@/games/crash/history';
+
+describe('tabellone dei voli: il colore e\' l\'esito del giocatore', () => {
+  it('incasso basso (×1,20) su volo caduto a ×1,50 → verde', () => {
+    expect(flightTone({ crash: 150, cashedAt: 120 })).toBe('win');
+  });
+  it('volo alto (×12,23) senza incasso → rosso', () => {
+    expect(flightTone({ crash: 1223, cashedAt: null })).toBe('loss');
+  });
+  it('crash istantaneo ×1,00 → rosso', () => {
+    expect(flightTone({ crash: 100, cashedAt: null })).toBe('loss');
+  });
+});

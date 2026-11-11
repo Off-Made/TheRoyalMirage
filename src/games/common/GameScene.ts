@@ -28,6 +28,8 @@ import type { EnvironmentId } from '@/fx/environment/registry';
 import { actions, settings } from '@/state/store';
 import { profileFor, type QualityProfile } from '@/state/settings';
 import { t } from '@/i18n';
+import { runTutorial, isTutorialOpen, type ScreenRect, type TutorialStep } from '@/ui/dom/Tutorial';
+import { progression } from '@/state/store';
 import { confirmModal, showModal } from '@/ui/dom/Modal';
 import { gameById, type GameId } from '@/games/registry';
 import { GameHud, HUD_BOTTOM, HUD_TOP, type HudOptions } from './GameHud';
@@ -109,7 +111,79 @@ export abstract class GameScene extends Scene {
       title: t(info.nameKey),
       onExit: () => void this.requestExit(),
       onInfo: rules ? () => this.openRules() : undefined,
+      onHelp: () => this.openTutorial(),
     });
+
+    // Primo ingresso: il tutorial parte da solo. Con un ritardo, perche' le
+    // sottoclassi aggiungono i propri comandi DOPO `super.enter()` e la
+    // transizione d'ingresso deve essere finita.
+    // Nei collaudi automatici (puppeteer: `navigator.webdriver`) non parte da
+    // solo, altrimenti il velo bloccherebbe i click degli script; per
+    // collaudare il tutorial stesso: localStorage 'rm:force-tutorial' = '1'.
+    const automated = navigator.webdriver && localStorage.getItem('rm:force-tutorial') !== '1';
+    if (!automated && !progression().tutorialsSeen.includes(this.gameId)) {
+      setTimeout(() => {
+        if (!this.root.destroyed && !this.roundActive && !isTutorialOpen()) this.openTutorial();
+      }, 900);
+    }
+  }
+
+  // ─────────────────────────────────────────────── TUTORIAL
+
+  /**
+   * Passi del tutorial: introduzione, saldo, puntata, pulsante principale,
+   * poi i passi propri del gioco (`tutorialGame`), infine regolamento e
+   * guida. Le sottoclassi di norma ridefiniscono solo `tutorialGame`.
+   */
+  protected tutorial(): TutorialStep[] {
+    const info = gameById(this.gameId);
+    const chips = this.hudOptions().betMode === 'chips';
+    return [
+      { title: t(info.nameKey), text: t('tut.intro', { tag: t(info.tagKey) }) },
+      { title: t('tut.balance.t'), text: t('tut.balance.x'), target: '.go-hud__meter--balance' },
+      { title: t('tut.bet.t'), text: t(chips ? 'tut.betChips.x' : 'tut.bet.x'), target: '.go-hud__bet' },
+      ...this.tutorialGame(),
+      { title: t('tut.primary.t'), text: t('tut.primary.x'), target: '.go-hud__primary' },
+      ...(this.rules() ? [{ title: t('tut.rules.t'), text: t('tut.rules.x'), target: '.go-hud__info' }] : []),
+      { title: t('tut.help.t'), text: t('tut.help.x'), target: '.go-hud__help' },
+    ];
+  }
+
+  /** Passi specifici del gioco, fra la puntata e il pulsante principale. */
+  protected tutorialGame(): TutorialStep[] {
+    return [];
+  }
+
+  protected openTutorial(): void {
+    if (this.root.destroyed) return;
+    runTutorial(this.tutorial(), () => actions.markTutorialSeen(this.gameId));
+  }
+
+  /**
+   * Bersaglio del tutorial da un rettangolo nello spazio di DESIGN del mondo
+   * (1920×1080). Passa da `world.toGlobal`, quindi tiene conto anche del
+   * ridimensionamento del mondo sul telefono (`fitWorld`). Con
+   * `autoDensity` le coordinate globali di Pixi sono gia' pixel CSS.
+   */
+  protected designTarget(x: number, y: number, w: number, h: number): () => ScreenRect | null {
+    return () => {
+      if (this.world.destroyed) return null;
+      const a = this.world.toGlobal({ x, y });
+      const b = this.world.toGlobal({ x: x + w, y: y + h });
+      const c = game.app.canvas.getBoundingClientRect();
+      return { x: c.left + a.x, y: c.top + a.y, w: b.x - a.x, h: b.y - a.y };
+    };
+  }
+
+  /** Bersaglio del tutorial da un oggetto Pixi (i suoi bounds attuali). */
+  protected pixiTarget(obj: () => Container | null | undefined): () => ScreenRect | null {
+    return () => {
+      const o = obj();
+      if (!o || o.destroyed) return null;
+      const b = o.getBounds();
+      const c = game.app.canvas.getBoundingClientRect();
+      return { x: c.left + b.x, y: c.top + b.y, w: b.width, h: b.height };
+    };
   }
 
   private async requestExit(): Promise<void> {

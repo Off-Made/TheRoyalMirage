@@ -69,6 +69,8 @@ import {
   type SpinPlan,
 } from './spin';
 import { rs } from './strings';
+import type { TutorialStep } from '@/ui/dom/Tutorial';
+
 
 const TAU = Math.PI * 2;
 
@@ -595,6 +597,14 @@ export class RouletteScene extends GameScene {
   }
 
   // ═══════════════════════════════════════════════ REGOLE
+
+  protected tutorialGame(): TutorialStep[] {
+    return [
+      { title: rs('tutTableT'), text: rs('tutTableX'), target: this.pixiTarget(() => this.table) },
+      { title: rs('tutWheelT'), text: rs('tutWheelX'), target: this.pixiTarget(() => this.wheel) },
+      { title: rs('tutToolsT'), text: rs('tutToolsX'), target: '.go-hud__top-extra' },
+    ];
+  }
 
   protected rules(): Node {
     const pay = [

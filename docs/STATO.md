@@ -1,5 +1,33 @@
 # THE ROYAL MIRAGE — Stato dei lavori
 
+## Punto di ripresa — 11/11/2026: RIFINITURA dagli appunti di collaudo del committente
+
+Piano approvato: `~/.claude/plans/questo-il-mio-kind-walrus.md`. Verifica: `tsc` pulito ·
+**457/457 test** (`npx vitest run --exclude "GoldenOasis-backup-pre-royal-mirage/**"`: senza
+l'esclusione vitest raccoglie anche i test del backup, che falliscono da sempre).
+
+| Area | Cosa | File |
+|---|---|---|
+| Golden Chip | storico verde/rosso dall'ESITO del giocatore (prima: soglia ×2 sul crash); sotto la pillola il moltiplicatore incassato; indicatore col solo numero del crash accanto al moltiplicatore, resta fino al decollo successivo. Volo e probabilità invariati (scelta del committente) | `crash/history.ts`, `CrashScene.ts` |
+| FPS | "Mostra FPS" ora mostra un badge (prima il setting non era letto da nessuno); tetto FPS riapplicato a ogni cambio di qualità | `ui/dom/FpsMeter.ts`, `main.ts` |
+| Slot: velocità | arresto con `stopPlan` (nastro riposizionato a 3 celle dallo stop: prima fino a un giro intero) e arresti in cascata; tempi in `SPIN_T`; tocco sui rulli = stop; Turbo = setting `fastPlay`; vincite ~40% più brevi | `ReelView.ts`, `SlotScene.ts`, `WinPresenter.ts` |
+| Slot: chiarezza | linea piena solo sul tratto pagato + tratteggio + "3 DI FILA"; testo HUD sempre presente; regolamento con "Come si vince" (schema) e premi in € alla puntata attuale | `SlotScene.ts`, `slots/view/strings.ts` |
+| Hold & Win | respin con mini-rulli veri per cella, scritta "RESPIN n", riepilogo monete + jackpot | `SlotScene.playHoldAndWin` |
+| Blackjack | mosse grandi al centro della barra (`hud.actions`, `setActing`), scorciatoie C/S/R/D | `GameHud.ts`, `BlackjackScene.ts`, `hud.css` |
+| Video poker | impostazione Tieni/Scarta (`vpTapMode`), riga "× 5 monete = 20,00 € a mano" (`betNote`), avviso una tantum | `VideoPokerScene.ts`, `machine.holdAll()`, `settings.ts` |
+| XP | 10 + 8·log2(1 + puntata/1 €) a GIRO (niente XP per raddoppi/split); soglie fino a 1,7 M, premi ridotti; salvataggio v3 con migrazione (rango conservato) | `progression.ts`, `save.ts`, `store.ts` |
+| Statistiche | per gioco (giri, puntato, vinto, netto, max, ritorno effettivo vs teorico) nel profilo; ARRAY e non mappa perché `deepMerge` tiene solo le chiavi dei default | `wallet.ts` `bumpStats`, `ProfileModal.ts` |
+| Tutorial | velo SVG con ritaglio + fumetto, parte al primo ingresso (`tutorialsSeen`), pulsante "Guida", reset dalle Impostazioni; passi per gioco in `tutorialGame()` | `ui/dom/Tutorial.ts`, `GameScene.ts` |
+
+### Da fare (fase successiva, chiesta dal committente ma rimandata)
+- Giochi bonus interni alle slot (pick-me, ruota): nuovo `XxxRule` in `slots/engine/types.ts` + ritaratura RTP.
+- Texas Hold'em contro bot. Virtuali (cavalli, levrieri, calcio) con esito indipendente dalle puntate.
+
+### Trappole
+- Il tutorial NON parte da solo sotto puppeteer (`navigator.webdriver`), altrimenti blocca i collaudi;
+  per collaudarlo: `localStorage['rm:force-tutorial'] = '1'`.
+- In `page.evaluate` non restituire la promessa di `GO.slot.spin()`: puppeteer la attende fino a fine giro.
+
 ## Punto di ripresa — 02/11/2026: TELEFONO (iPhone) + ritocchi
 
 - **Telefono** (vedi `docs/IPHONE.md`): `html.is-compact` quando il lato corto è <= 500 px (`core/App.ts`).

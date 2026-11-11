@@ -93,3 +93,24 @@ describe('mano', () => {
     for (const i of [1, 3, 4]) expect(h.cards.some((c) => c === before[i])).toBe(false);
   });
 });
+
+import { VideoPokerMachine } from '@/games/videopoker/machine';
+
+describe('modalita\' "tocca per scartare"', () => {
+  it('holdAll tiene tutte le carte: un tocco poi le scarta una a una', () => {
+    const m = new VideoPokerMachine();
+    m.start(new PokerHand(seededRng(7)), 100);
+    m.holdAll();
+    expect(m.held).toEqual([true, true, true, true, true]);
+    m.toggle(2);
+    const before = [...m.hand!.cards];
+    const r = m.finish()!;
+    expect(r.replaced).toEqual([2]);
+    expect(m.hand!.cards.filter((_, i) => i !== 2)).toEqual(before.filter((_, i) => i !== 2));
+  });
+  it('holdAll fuori dalla fase di scelta non fa nulla', () => {
+    const m = new VideoPokerMachine();
+    m.holdAll();
+    expect(m.held.every((h) => !h)).toBe(true);
+  });
+});

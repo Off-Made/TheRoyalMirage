@@ -543,3 +543,107 @@
     transform: rotate(-90deg);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════ FPS */
+.go-fps {
+  position: fixed;
+  z-index: 850;
+  left: var(--sp-3);
+  bottom: var(--sp-3);
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--border-soft);
+  color: var(--text-strong);
+  font-family: var(--font-num);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════ TUTORIAL */
+.go-tut {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  opacity: 0;
+  transition: opacity var(--t-base) var(--ease-out);
+}
+.go-tut.is-in {
+  opacity: 1;
+}
+.go-tut.is-out {
+  opacity: 0;
+  pointer-events: none;
+}
+.go-tut__veil {
+  position: absolute;
+  inset: 0;
+}
+.go-tut__shade {
+  fill: rgba(var(--plum-abyss-rgb), 0.78);
+}
+.go-tut__ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 16px;
+  border: 2px solid var(--border-gold-strong);
+  box-shadow: 0 0 0 6px rgba(var(--gold-core-rgb), 0.18), 0 0 32px rgba(var(--gold-core-rgb), 0.45);
+  pointer-events: none;
+  transition: transform var(--t-base) var(--ease-out), width var(--t-base) var(--ease-out),
+    height var(--t-base) var(--ease-out);
+}
+.go-tut__bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: min(440px, calc(100vw - 16px));
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-gold);
+  box-shadow: var(--shadow-md);
+  color: var(--text-strong);
+  transition: transform var(--t-base) var(--ease-out);
+}
+.go-tut__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.go-tut__count {
+  color: var(--text-mute);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.go-tut__title {
+  margin: var(--sp-2) 0 var(--sp-1);
+  font-family: var(--font-display);
+  font-size: 30px;
+  letter-spacing: 0.02em;
+  color: var(--text-strong);
+}
+.go-tut__text {
+  margin: 0 0 var(--sp-4);
+  color: var(--text-soft);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.go-tut__nav {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .go-tut__ring,
+  .go-tut__bubble {
+    transition: none;
+  }
+}

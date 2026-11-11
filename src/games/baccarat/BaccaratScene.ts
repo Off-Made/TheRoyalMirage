@@ -58,6 +58,8 @@ import {
 } from './rules';
 import { BetBoard, recital, roadWindow } from './board';
 import { bs } from './strings';
+import type { TutorialStep } from '@/ui/dom/Tutorial';
+
 
 // ─────────────────────────────────────────────── GEOMETRIA (px di design)
 
@@ -497,6 +499,14 @@ export class BaccaratScene extends GameScene {
   }
 
   // ═══════════════════════════════════════════════ REGOLE
+
+  protected tutorialGame(): TutorialStep[] {
+    return [
+      { title: bs('tutBetT'), text: bs('tutBetX'), target: this.designTarget(236, AREA_Y, 1448, AREA_H) },
+      { title: bs('tutCardsT'), text: bs('tutCardsX'), target: this.designTarget(236, LABEL_Y - 40, 1448, 330) },
+      { title: bs('tutRoadsT'), text: bs('tutRoadsX'), target: this.pixiTarget(() => this.roads) },
+    ];
+  }
 
   protected rules(): Node {
     const p = (text: string) => el('p', { text });

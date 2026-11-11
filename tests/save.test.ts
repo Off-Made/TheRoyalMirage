@@ -62,7 +62,8 @@ describe('migrazione 1 → 2', () => {
       })
     );
     const out = load(defaults);
-    expect(out.progression.xp).toBe(4_200);
+    // 4.200 XP della vecchia curva = rango 1: riparte dall'inizio del rango 1.
+    expect(out.progression.xp).toBe(1_500);
     expect(out.progression.gamesPlayed).toEqual(['roulette']);
     expect(out.settings.volume).toBe(0.3);
   });
@@ -77,5 +78,20 @@ describe('migrazione 1 → 2', () => {
       })
     );
     expect(load(defaults).wallets.career.balance).toBe(31_415);
+  });
+});
+
+describe('migrazione 2 → 3: nuova curva XP', () => {
+  it('un giocatore al vertice (30 milioni di XP) resta al vertice, senza premi ripagati', () => {
+    mem.set(
+      SAVE_KEY,
+      JSON.stringify({ version: 2, savedAt: 0, data: { progression: { xp: 30_394_931, level: 8, gamesPlayed: [] } } })
+    );
+    // 1.700.000 = soglia del rango 8 nella curva nuova.
+    expect(load(defaults).progression.xp).toBe(1_700_000);
+  });
+  it('un ospite resta a zero', () => {
+    mem.set(SAVE_KEY, JSON.stringify({ version: 2, savedAt: 0, data: { progression: { xp: 900, gamesPlayed: [] } } }));
+    expect(load(defaults).progression.xp).toBe(0);
   });
 });

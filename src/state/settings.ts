@@ -89,6 +89,11 @@ export interface SettingsState {
   fastPlay: boolean;
   /** Mostra l'overlay FPS/diagnostica. */
   showFps: boolean;
+  /**
+   * Video poker: il tocco su una carta la TIENE (standard dei casino') o la
+   * SCARTA (piu' intuitivo per chi impara).
+   */
+  vpTapMode: 'hold' | 'discard';
   /** Auto-spin: numero di spin consecutivi. 0 = disattivato. */
   autoSpinCount: number;
 }
@@ -134,6 +139,7 @@ export function initialSettings(): SettingsState {
     reducedMotion: prefersReducedMotion(),
     fastPlay: false,
     showFps: false,
+    vpTapMode: 'hold',
     autoSpinCount: 0,
   };
 }

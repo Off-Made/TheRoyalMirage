@@ -33,3 +33,8 @@ immagini ispirazioni/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ── Copie di sicurezza e materiale grezzo: non servono al sito
+GoldenOasis-backup-pre-royal-mirage/
+mr-assets-raw/
+agd-tools/

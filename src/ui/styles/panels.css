@@ -373,3 +373,30 @@
     padding-right: var(--sp-4);
   }
 }
+
+/* ── Statistiche per gioco */
+.go-grow {
+  display: grid;
+  grid-template-columns: 1.5fr 0.7fr 1fr 1fr 1fr 1fr 1.3fr;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--plum-base);
+  font-size: var(--fs-sm);
+}
+.go-grow:nth-child(even) {
+  background: var(--surface-1);
+}
+.go-grow--head {
+  color: var(--text-mute);
+  font-weight: 700;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.go-grow--head span:not(:first-child),
+.go-grow__num {
+  text-align: right;
+}
+.go-grow__num {
+  font-weight: 700;
+}

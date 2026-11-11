@@ -29,6 +29,8 @@ export interface HudOptions {
   onPrimary: () => void;
   onExit: () => void;
   onInfo?: () => void;
+  /** Riapre il tutorial guidato del gioco (pulsante "Guida"). */
+  onHelp?: () => void;
   /**
    * 'stepper' = campo libero con −/+ (slot, crash, video poker);
    * 'chips'   = campo libero + fiche rapide (tavoli: l'importo e' la fiche
@@ -44,6 +46,12 @@ export interface HudOptions {
    * intero e con 5 monete servirebbe il quintuplo. Default 1.
    */
   stakeFactor?: () => number;
+  /**
+   * Riga sotto il campo puntata, ricalcolata a ogni aggiornamento. Il video
+   * poker la usa per dire in chiaro "× 5 monete = 20,00 €": il campo e' il
+   * valore di UNA moneta e da solo trae in inganno.
+   */
+  betNote?: () => string;
 }
 
 export class GameHud {
@@ -57,11 +65,18 @@ export class GameHud {
   private msgEl: HTMLElement;
   private primary: HTMLButtonElement;
   private betGroup: HTMLElement;
+  private betNoteEl: HTMLElement | null = null;
   private chipRow: HTMLElement | null = null;
   /** Area libera a sinistra del pulsante principale per i controlli del gioco. */
   readonly extra: HTMLElement;
   /** Area libera in alto a destra, accanto alle regole. */
   readonly topExtra: HTMLElement;
+  /**
+   * Fila di mosse grandi, centrata nella barra (blackjack: Carta, Stai...).
+   * Visibile solo con `setActing(true)`: in quel momento la puntata e la
+   * vincita si nascondono e la fila ne prende il posto.
+   */
+  readonly actions: HTMLElement;
   private unsub: () => void;
   private betLocked = false;
   private shownBalance = -1;
@@ -78,11 +93,17 @@ export class GameHud {
       ? button(t('hud.paytable'), { variant: 'secondary', size: 'sm', icon: 'ℹ', onClick: opts.onInfo })
       : null;
 
+    const help = opts.onHelp
+      ? button(t('hud.tutorial'), { variant: 'secondary', size: 'sm', icon: '?', onClick: opts.onHelp })
+      : null;
+    help?.classList.add('go-hud__help');
+    info?.classList.add('go-hud__info');
+
     const top = div(
       'go-hud__top',
       exit,
       el('h1', { class: 'go-hud__title', text: opts.title }),
-      div('go-hud__top-right', this.topExtra, info)
+      div('go-hud__top-right', this.topExtra, help, info)
     );
 
     this.balanceEl = el('span', { class: 'go-hud__value numeric' });
@@ -108,6 +129,10 @@ export class GameHud {
     });
 
     const betMeter = meter(opts.betLabel ?? t('hud.bet'), this.betEl, 'go-hud__meter--bet');
+    if (opts.betNote) {
+      this.betNoteEl = el('span', { class: 'go-hud__betnote' });
+      betMeter.append(this.betNoteEl);
+    }
     this.betGroup =
       mode === 'chips'
         ? div('go-hud__bet go-hud__bet--chips', this.buildChips(), betMeter, this.buildQuick())
@@ -115,6 +140,7 @@ export class GameHud {
     if (mode === 'none') this.betGroup.style.display = 'none';
 
     this.extra = div('go-hud__extra');
+    this.actions = div('go-hud__actions');
     this.msgEl = el('p', { class: 'go-hud__msg', attrs: { 'aria-live': 'polite' } });
 
     this.primary = button(opts.primaryLabel, { variant: 'primary', size: 'lg', onClick: () => this.firePrimary() });
@@ -126,7 +152,8 @@ export class GameHud {
       this.betGroup,
       meter(t('hud.win'), this.winEl, 'go-hud__meter--win'),
       this.extra,
-      this.primary
+      this.primary,
+      this.actions
     );
 
     this.root = div('design-space go-hud', top, this.msgEl, bar);
@@ -148,6 +175,11 @@ export class GameHud {
 
     document.getElementById('overlay')?.append(this.root);
     requestAnimationFrame(() => this.root.classList.add('is-in'));
+  }
+
+  /** Mostra la fila delle mosse al posto di puntata e vincita. */
+  setActing(on: boolean): void {
+    this.root.classList.toggle('is-acting', on);
   }
 
   private firePrimary(): void {
@@ -317,6 +349,7 @@ export class GameHud {
       this.balanceEl.textContent = formatMoney(w.balance);
     }
     if (!this.editing) this.betEl.value = formatMoney(w.bet);
+    if (this.betNoteEl && this.opts.betNote) this.betNoteEl.textContent = this.opts.betNote();
     this.betEl.disabled = this.betLocked;
     const ceil = this.ceil();
     if (this.chipRow) {

@@ -60,6 +60,12 @@ export const bs = defineStrings({
     rulesRoadBody:
       'La grande strada registra i colpi del sabot: una colonna per serie, rosso il Banco, blu il Punto, una barretta verde per ogni pareggio. Il tabellone a sinistra elenca invece i colpi in ordine. Entrambi si azzerano quando il sabot viene mescolato.',
     rulesShoe: 'Sabot di 8 mazzi, carta di taglio al 94%. RTP {rtp}% con puntata sul Banco.',
+    tutBetT: 'Su chi punti',
+    tutBetX: 'Tu non ricevi carte: scegli quale mano vincerà. Punto paga 1 a 1, Banco 1 a 1 meno il 5% di commissione, Pareggio 8 a 1. Tocca una zona per posare la fiche.',
+    tutCardsT: 'Come si conta',
+    tutCardsX: 'Punto e Banco ricevono due carte. Vince chi si avvicina di più a 9. Asso vale 1, 10 e figure 0, e si tiene solo l’unità: 7 + 8 = 15 vale 5. L’eventuale terza carta arriva da sola, secondo regole fisse.',
+    tutRoadsT: 'Il tabellone',
+    tutRoadsX: 'Registra i colpi del sabot: blu il Punto, rosso il Banco, verde il pareggio. È solo memoria: ogni colpo è indipendente dai precedenti.',
   },
   en: {
     deal: 'Deal',
@@ -116,5 +122,11 @@ export const bs = defineStrings({
     rulesRoadBody:
       'The big road records the coups of the shoe: one column per streak, red for Banker, blue for Player, a green dash for every tie. The bead plate on the left lists the coups in order instead. Both reset when the shoe is shuffled.',
     rulesShoe: 'Eight deck shoe, cut card at 94%. RTP {rtp}% betting Banker.',
+    tutBetT: 'Who you bet on',
+    tutBetX: 'You get no cards: you choose which hand will win. Player pays 1 to 1, Banker 1 to 1 minus 5% commission, Tie 8 to 1. Tap an area to place your chip.',
+    tutCardsT: 'How to count',
+    tutCardsX: 'Player and Banker get two cards each. The hand closest to 9 wins. Ace is 1, tens and face cards 0, and only the last digit counts: 7 + 8 = 15 is 5. Any third card is dealt automatically under fixed rules.',
+    tutRoadsT: 'The scoreboard',
+    tutRoadsX: 'It records the shoe: blue for Player, red for Banker, green for ties. It is only memory: every coup is independent of the previous ones.',
   },
 });

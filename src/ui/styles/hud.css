@@ -707,3 +707,85 @@
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+
+/* Schema "come si vince" del regolamento slot. */
+.go-pay__how {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  margin: var(--sp-2) 0 var(--sp-3);
+}
+.go-pay__how span {
+  color: var(--text-soft);
+  font-size: var(--fs-sm);
+}
+.go-pay__example {
+  flex: none;
+  border-radius: var(--r-md);
+  background: var(--surface-glass);
+  border: 1px solid var(--border-soft);
+}
+
+/* ══════════════════════════════════════════════════════ MOSSE (blackjack)
+   Fila centrata nella barra. Durante la mano sostituisce puntata e vincita:
+   le mosse sono l'unica cosa che conta in quel momento. */
+.go-hud__actions {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: none;
+  align-items: center;
+  gap: 14px;
+}
+.go-hud.is-acting .go-hud__actions {
+  display: flex;
+}
+.go-hud.is-acting .go-hud__bet,
+.go-hud.is-acting .go-hud__meter--win {
+  visibility: hidden;
+}
+.go-hud__move {
+  position: relative;
+  min-width: 176px;
+  min-height: 80px;
+  font-family: var(--font-display);
+  font-size: 30px;
+  letter-spacing: 0.04em;
+}
+.go-hud__move:disabled {
+  opacity: 0.35;
+}
+.go-hud__key {
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  font-family: var(--font-num);
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.6;
+}
+.is-compact .go-hud__actions {
+  gap: calc(6 * var(--vp-u));
+}
+.is-compact .go-hud__move {
+  min-width: calc(88 * var(--vp-u));
+  min-height: calc(46 * var(--vp-u));
+  padding: 0 calc(10 * var(--vp-u));
+  font-size: calc(17 * var(--vp-u));
+}
+.is-compact .go-hud__key {
+  display: none;
+}
+
+/* Riga di spiegazione sotto il campo puntata (video poker: valore × monete). */
+.go-hud__betnote {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-strong);
+  line-height: 1;
+  white-space: nowrap;
+}
+.is-compact .go-hud__betnote {
+  font-size: calc(10 * var(--vp-u));
+}

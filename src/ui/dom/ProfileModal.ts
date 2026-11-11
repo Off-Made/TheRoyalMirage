@@ -104,9 +104,51 @@ export function openProfile(): void {
     }),
     el('span', {
       class: 'go-pstat__label',
-      text: `${t('profile.gamesPlayed')}: ${p.gamesPlayed.length} / 8`,
+      text: `${t('profile.gamesPlayed')}: ${p.gamesPlayed.length} / ${GAMES.length}`,
     }),
     el('span', { class: 'go-pstat__label', text: t('daily.streak', { n: p.streak }) })
+  );
+
+  // ── Per gioco: puntato, vinto, netto e ritorno EFFETTIVO accanto al
+  // teorico. Con pochi giri il ritorno effettivo balla molto: e' proprio
+  // la lezione (la varianza), e il teorico accanto la rende leggibile.
+  const statRows = GAMES.map((g) => ({ g, s: w.stats.find((x) => x.game === g.id) }))
+    .filter((r) => r.s && r.s.rounds > 0)
+    .map(({ g, s }) => {
+      const netG = s!.won - s!.wagered;
+      const rtp = s!.wagered > 0 ? (s!.won / s!.wagered) * 100 : 0;
+      const netEl = el('span', {
+        class: 'go-grow__num numeric',
+        text: `${netG >= 0 ? '+' : '−'}${formatMoney(Math.abs(netG))}`,
+      });
+      netEl.style.color = netG > 0 ? css(PALETTE.win.core) : netG < 0 ? css(PALETTE.loss.core) : css(PALETTE.text.mute);
+      return div(
+        'go-grow',
+        el('span', { class: 'go-hrow__game', text: t(g.nameKey) }),
+        el('span', { class: 'go-grow__num numeric', text: num(s!.rounds) }),
+        el('span', { class: 'go-grow__num numeric', text: formatMoney(s!.wagered) }),
+        el('span', { class: 'go-grow__num numeric', text: formatMoney(s!.won) }),
+        netEl,
+        el('span', { class: 'go-grow__num numeric', text: formatMoney(s!.biggestWin) }),
+        el('span', {
+          class: 'go-grow__num numeric',
+          text: `${rtp.toFixed(1)}% · ${g.rtp.toFixed(1)}%`,
+        })
+      );
+    });
+  const head = div(
+    'go-grow go-grow--head',
+    ...(['profile.col.game', 'profile.col.rounds', 'profile.col.wagered', 'profile.col.won', 'profile.col.net', 'profile.col.best', 'profile.col.rtp'] as const).map(
+      (k) => el('span', { i18n: k })
+    )
+  );
+  const perGame = div(
+    'go-group',
+    el('h3', { class: 'go-group__title', i18n: 'profile.perGame' }),
+    statRows.length
+      ? div('go-history go-pergame', head, ...statRows)
+      : el('p', { class: 'go-pstat__label', i18n: 'profile.noHistory' }),
+    statRows.length ? el('p', { class: 'go-pstat__label', i18n: 'profile.rtpNote' }) : null
   );
 
   // ── Storico
@@ -184,6 +226,6 @@ export function openProfile(): void {
   showModal({
     titleKey: 'profile.title',
     width: 880,
-    body: div('go-profile', header, stats, meta, ladder, trophies, history),
+    body: div('go-profile', header, stats, meta, perGame, ladder, trophies, history),
   });
 }

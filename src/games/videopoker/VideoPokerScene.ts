@@ -51,6 +51,12 @@ import {
   rowHighlightTexture,
 } from './art';
 import { vs } from './strings';
+import type { TutorialStep } from '@/ui/dom/Tutorial';
+
+import { toast } from '@/ui/dom/Toasts';
+
+/** Avviso 'valore × monete' gia' mostrato una volta. */
+const STAKE_SEEN_KEY = 'golden-oasis:vp-stake-seen';
 
 /** Riga di stato fra tabella (fondo a 436) e carte (cima a 474): testo basso, niente sollevamenti. */
 const STATUS_Y = 455;
@@ -78,6 +84,13 @@ export class VideoPokerScene extends GameScene {
 
   private cards: CardView[] = [];
   private holds: Sprite[] = [];
+  /** Etichette "CAMBIA" della modalita' "tocca per scartare". */
+  private discards: Sprite[] = [];
+
+  /** Modalita' di tocco scelta nelle Impostazioni. */
+  private get discardMode(): boolean {
+    return settings().vpTapMode === 'discard';
+  }
   private colHL!: Sprite;
   private rowHL!: Sprite;
   private payCells: Text[][] = [];
@@ -98,6 +111,8 @@ export class VideoPokerScene extends GameScene {
       betLabel: vs('coinValue'),
       // La puntata e' il valore di UNA moneta: la giocata e' moneta × monete.
       stakeFactor: () => this.machine.coins,
+      betNote: () =>
+        vs('betNote', { coins: this.machine.coins, total: formatMoney(this.machine.stake(this.denom)) }),
     };
   }
 
@@ -151,7 +166,12 @@ export class VideoPokerScene extends GameScene {
       h.position.set(x, HOLD_Y);
       h.visible = false;
       this.holds.push(h);
-      cardLayer.addChild(v, h);
+      const d = new Sprite(holdBadgeTexture(vs('discard')));
+      d.anchor.set(0.5);
+      d.position.set(x, HOLD_Y);
+      d.visible = false;
+      this.discards.push(d);
+      cardLayer.addChild(v, h, d);
     });
 
     this.world.addChild(cab, pay, this.colHL, this.rowHL, cells, this.coinsText, this.stakeText, this.handText, cardLayer);
@@ -271,9 +291,30 @@ export class VideoPokerScene extends GameScene {
   private toggleHold(i: number): void {
     if (this.phase !== 'hold' || !this.machine.toggle(i)) return;
     sfxChip();
-    const on = this.machine.held[i]!;
-    this.holds[i]!.visible = on;
-    this.cards[i]!.setGlow(on, !settings().reducedMotion);
+    this.paintHold(i);
+  }
+
+  /**
+   * Stato visivo di una carta durante la scelta. "Tieni": la carta tenuta
+   * brilla e porta TENUTA. "Scarta": tutte partono tenute, quella toccata
+   * si abbassa, si spegne e porta CAMBIA. Il motore e' lo stesso: cambia solo
+   * cosa significa il tocco.
+   */
+  private paintHold(i: number): void {
+    const held = this.machine.held[i]!;
+    const card = this.cards[i]!;
+    if (this.discardMode) {
+      this.holds[i]!.visible = false;
+      this.discards[i]!.visible = !held;
+      card.setGlow(false, false);
+      card.alpha = held ? 1 : 0.5;
+      card.y = held ? CARD_Y : CARD_Y + 18;
+    } else {
+      this.discards[i]!.visible = false;
+      this.holds[i]!.visible = held;
+      card.alpha = 1;
+      card.setGlow(held, !settings().reducedMotion);
+    }
   }
 
   // ═══════════════════════════════════════════════ LA MANO
@@ -285,6 +326,11 @@ export class VideoPokerScene extends GameScene {
     if (!this.placeBet(stake)) {
       this.hud.message(vs('insufficient', { coins: this.machine.coins }), 'warn');
       return;
+    }
+    // Una volta sola: chi scrive "4 €" deve sapere che con 5 monete ne gioca 20.
+    if (this.machine.coins > 1 && !localStorage.getItem(STAKE_SEEN_KEY)) {
+      localStorage.setItem(STAKE_SEEN_KEY, '1');
+      toast(vs('stakeWarn', { coin: formatMoney(denom), coins: this.machine.coins, total: formatMoney(stake) }), 'info', 7000);
     }
     const t = ++this.token;
     this.roundActive = true;
@@ -302,6 +348,8 @@ export class VideoPokerScene extends GameScene {
     await Promise.all(
       this.cards.map((c, i) => {
         this.holds[i]!.visible = false;
+        this.discards[i]!.visible = false;
+        c.alpha = 1;
         c.setGlow(false, false);
         gsap.killTweensOf(c);
         c.y = CARD_Y;
@@ -318,12 +366,16 @@ export class VideoPokerScene extends GameScene {
     }
 
     this.phase = 'hold';
+    if (this.discardMode) {
+      this.machine.holdAll();
+      for (let i = 0; i < 5; i++) this.paintHold(i);
+    }
     const pre = this.machine.preview();
     if (pre && pre.rank !== 'nothing') {
       this.handText.text = vs(pre.rank);
       this.highlightRow(pre.rank, false);
     }
-    this.hud.message(vs('hint'));
+    this.hud.message(vs(this.discardMode ? 'hintDiscard' : 'hint'));
     this.refreshControls();
   }
 
@@ -368,6 +420,11 @@ export class VideoPokerScene extends GameScene {
     this.refreshControls();
     this.hud.setWin(win);
     for (const h of this.holds) h.visible = false;
+    for (const d of this.discards) d.visible = false;
+    this.cards.forEach((c) => {
+      c.alpha = 1;
+      c.y = CARD_Y;
+    });
     this.cards.forEach((c, i) => {
       gsap.killTweensOf(c);
       c.y = CARD_Y;
@@ -402,6 +459,18 @@ export class VideoPokerScene extends GameScene {
   }
 
   // ═══════════════════════════════════════════════ REGOLE
+
+  protected tutorialGame(): TutorialStep[] {
+    return [
+      { title: vs('tutPayT'), text: vs('tutPayX'), target: this.designTarget(PAY.x, PAY.y, PAY.w, PAY.h) },
+      {
+        title: vs('tutCardsT'),
+        text: vs(this.discardMode ? 'tutCardsDiscard' : 'tutCardsHold'),
+        target: this.designTarget(CARD_XS[0]! - CARD_WIDTH / 2, CARD_Y - CARD_H / 2, CARD_XS[4]! - CARD_XS[0]! + CARD_WIDTH, CARD_H + 70),
+      },
+      { title: vs('tutCoinsT'), text: vs('tutCoinsX'), target: '.go-hud__extra' },
+    ];
+  }
 
   protected rules(): Node {
     const p = (text: string) => el('p', { text });

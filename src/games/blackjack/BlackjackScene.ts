@@ -58,6 +58,8 @@ import { sfxBetConfirm, sfxCardDeal, sfxCardFlip, sfxChip, sfxLose } from '@/aud
 import { BlackjackRound, handTotal, isBlackjack, insuranceCost, type HandOutcome } from './rules';
 import { SEATS, badgeLabel, fanOffsets, moveCost, seatXs, settlement, type PaidMove } from './flow';
 import { bs } from './strings';
+import type { TutorialStep } from '@/ui/dom/Tutorial';
+
 
 // ─────────────────────────────────────────────── GEOMETRIA (px di design)
 
@@ -185,25 +187,45 @@ export class BlackjackScene extends GameScene {
 
   async enter(): Promise<void> {
     await super.enter();
-    const mk = (label: string, fn: () => void) => {
-      const b = button(label, { variant: 'secondary', size: 'sm', onClick: fn });
-      b.classList.add('go-hud__toggle');
-      this.hud.extra.append(b);
+    // Mosse GRANDI e al centro della barra (richiesta del committente: erano
+    // piccole e schiacciate a destra). Ogni mossa ha la sua lettera da
+    // tastiera, scritta sul pulsante.
+    const mk = (label: string, key: string, variant: 'primary' | 'secondary', fn: () => void) => {
+      const b = button(label, { variant, size: 'lg', onClick: fn });
+      b.classList.add('go-hud__move');
+      b.append(el('kbd', { class: 'go-hud__key', text: key.toUpperCase() }));
+      b.dataset.key = key.toLowerCase();
+      this.hud.actions.append(b);
       return b;
     };
     this.btn = {
-      insurance: mk(bs('insurance'), () => void this.insurance(true)),
-      noInsurance: mk(bs('noInsurance'), () => void this.insurance(false)),
-      split: mk(bs('split'), () => void this.paidMove('split')),
-      double: mk(bs('double'), () => void this.paidMove('double')),
-      hit: mk(bs('hit'), () => void this.hit()),
-      stand: mk(bs('stand'), () => void this.stand()),
+      insurance: mk(bs('insurance'), bs('keyInsurance'), 'secondary', () => void this.insurance(true)),
+      noInsurance: mk(bs('noInsurance'), bs('keyNoInsurance'), 'secondary', () => void this.insurance(false)),
+      split: mk(bs('split'), bs('keySplit'), 'secondary', () => void this.paidMove('split')),
+      double: mk(bs('double'), bs('keyDouble'), 'secondary', () => void this.paidMove('double')),
+      hit: mk(bs('hit'), bs('keyHit'), 'primary', () => void this.hit()),
+      stand: mk(bs('stand'), bs('keyStand'), 'primary', () => void this.stand()),
     };
+    this.onMoveKey = (e: KeyboardEvent) => {
+      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+      const tgt = e.target as HTMLElement | null;
+      if (tgt && /^(INPUT|TEXTAREA|SELECT)$/.test(tgt.tagName)) return;
+      if (document.querySelector('.go-modal')) return;
+      const k = e.key.toLowerCase();
+      const b = Object.values(this.btn ?? {}).find((x) => x.dataset.key === k && x.style.display !== 'none' && !x.disabled);
+      if (b) {
+        e.preventDefault();
+        b.click();
+      }
+    };
+    window.addEventListener('keydown', this.onMoveKey);
     this.refreshControls();
     this.hud.message(bs('placeBet'));
   }
 
   // ═══════════════════════════════════════════════ STATO
+
+  private onMoveKey: ((e: KeyboardEvent) => void) | null = null;
 
   private get disposed(): boolean {
     return this.root.destroyed;
@@ -244,6 +266,7 @@ export class BlackjackScene extends GameScene {
     // e al suo posto compaiono le mosse.
     const chipRow = this.hud.root.querySelector<HTMLElement>('.go-hud__chips');
     if (chipRow) chipRow.style.display = inPlay ? 'none' : '';
+    this.hud.setActing(inPlay);
     this.hud.setPrimaryEnabled(this.phase === 'idle');
     this.hud.lockBet(this.phase !== 'idle');
   }
@@ -649,6 +672,13 @@ export class BlackjackScene extends GameScene {
 
   // ═══════════════════════════════════════════════ REGOLE
 
+  protected tutorialGame(): TutorialStep[] {
+    return [
+      { title: bs('tutGoalT'), text: bs('tutGoalX'), target: this.designTarget(470, 120, 980, 700) },
+      { title: bs('tutMovesT'), text: bs('tutMovesX'), target: '.go-hud__bar' },
+    ];
+  }
+
   protected rules(): Node {
     const p = (text: string) => el('p', { text });
     return div(
@@ -675,6 +705,8 @@ export class BlackjackScene extends GameScene {
     // Le coroutine in volo trovano un gettone nuovo e non toccano piu' nulla.
     this.token++;
     this.btn = null;
+    if (this.onMoveKey) window.removeEventListener('keydown', this.onMoveKey);
+    this.onMoveKey = null;
     super.dispose();
   }
 }

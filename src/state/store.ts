@@ -18,6 +18,7 @@ import {
   type WalletState,
   initialWallet,
   HISTORY_LIMIT,
+  bumpStats,
   clampBet,
   halfBet,
   doubleBet,
@@ -188,11 +189,13 @@ export const actions = {
       balance: x.balance - bet,
       totalWagered: x.totalWagered + bet,
       spins: x.spins + (countRound ? 1 : 0),
+      stats: bumpStats(x.stats, game, { rounds: countRound ? 1 : 0, wagered: bet }),
     }));
     patchProgression((p) =>
       p.gamesPlayed.includes(game) ? p : { ...p, gamesPlayed: [...p.gamesPlayed, game] }
     );
-    grantXp(xpForWager(bet));
+    // XP solo per la giocata, non per raddoppi, divisioni e assicurazioni.
+    if (countRound) grantXp(xpForWager(bet));
     bus.emit('wallet:bet', { game, bet });
     return true;
   },
@@ -215,6 +218,7 @@ export const actions = {
         totalWon: x.totalWon + win,
         biggestWin: Math.max(x.biggestWin, win),
         history: history.slice(0, HISTORY_LIMIT),
+        stats: bumpStats(x.stats, game, { won: win }),
       };
     });
     bus.emit('wallet:settle', { game, bet, payout: win });
@@ -341,6 +345,16 @@ export const actions = {
   setName(name: string): void {
     const clean = name.trim().slice(0, 18);
     store.setState((s) => ({ profile: { ...s.profile, name: clean } }));
+  },
+
+  /** Il tutorial del gioco e' stato visto o chiuso: non riparte da solo. */
+  markTutorialSeen(game: string): void {
+    patchProgression((p) => (p.tutorialsSeen.includes(game) ? p : { ...p, tutorialsSeen: [...p.tutorialsSeen, game] }));
+  },
+
+  /** Dalle impostazioni: ogni tutorial ripartira' al prossimo ingresso. */
+  resetTutorials(): void {
+    patchProgression((p) => ({ ...p, tutorialsSeen: [] }));
   },
 
   unlockAchievement(id: string): boolean {

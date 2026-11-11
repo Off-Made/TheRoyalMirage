@@ -22,6 +22,7 @@ import { scenes } from './core/SceneManager';
 import { loadFonts } from './core/fonts';
 import { AtmosphereScene } from './scenes/AtmosphereScene';
 import { shell } from './ui/Shell';
+import { setFpsMeter } from './ui/dom/FpsMeter';
 import './ui/styles/hud.css';
 import { setLanguage } from './i18n';
 import { gsap } from 'gsap';
@@ -72,11 +73,18 @@ async function boot(): Promise<void> {
     if (!stageEl) throw new Error('Elemento #stage assente in index.html');
     await game.init(stageEl);
     console.info(`[render] backend attivo: ${game.backend.toUpperCase()}`);
-    const cap = profileFor(s).fpsCap;
-    if (cap > 0) game.ticker.maxFPS = cap;
-    game.setColorGrade(profileFor(s).colorGrade);
-    // La qualita' puo' cambiare dalle impostazioni a partita in corso.
-    bus.on('settings:changed', () => game.setColorGrade(profileFor(settings()).colorGrade));
+    // Qualita', tetto FPS e contatore possono cambiare dalle impostazioni a
+    // partita in corso: si applicano all'avvio e a ogni modifica. Il tetto
+    // torna a 0 (illimitato) quando la qualita' lo toglie, non resta appeso.
+    const applyRenderSettings = () => {
+      const cur = settings();
+      const profile = profileFor(cur);
+      game.ticker.maxFPS = profile.fpsCap > 0 ? profile.fpsCap : 0;
+      game.setColorGrade(profile.colorGrade);
+      setFpsMeter(cur.showFps);
+    };
+    applyRenderSettings();
+    bus.on('settings:changed', applyRenderSettings);
 
     status('Accensione delle luci');
     scenes.install();

@@ -17,7 +17,7 @@
  * riscrivere l'animazione.
  */
 
-import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
+import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import { gsap } from 'gsap';
 import { DESIGN_WIDTH, game } from '@/core/App';
 import { GameScene, type SceneHudOptions } from '@/games/common/GameScene';
@@ -30,7 +30,7 @@ import { preloadImages } from '@/art/images';
 import { t as tr } from '@/i18n';
 import { gameById } from '@/games/registry';
 import { bake } from '@/art/textureCache';
-import { wallet, settings } from '@/state/store';
+import { wallet, settings, actions } from '@/state/store';
 import { formatMoney } from '@/state/wallet';
 import { sfxReelStop, sfxSpinStart, sfxWin, sfxCoin, sfxTick, sfxLose, sfxConfirm, sfxJackpot } from '@/audio/synth';
 import { defaultRng, type Rng } from '../engine/rng';
@@ -40,6 +40,8 @@ import type { JackpotDef, MachineDef, RoundOutcome, SpinOutcome, SymId, WinLine 
 import { ReelView } from './ReelView';
 import { FRAME_CREST, frameTexture, reelBackTexture, windowSize, type FrameGeometry } from './frame';
 import { ss } from './strings';
+import type { TutorialStep } from '@/ui/dom/Tutorial';
+
 
 export interface SlotTheme {
   gameId: GameId;
@@ -78,6 +80,25 @@ export interface SlotTheme {
 }
 
 const LINE_COLORS = PAYLINE_COLORS;
+
+/**
+ * Tempi del giro, in secondi. Obiettivo: ~1,2-1,6 s a giro normale, ~0,6 s
+ * in turbo, contando dal click all'ultimo rullo fermo.
+ */
+const SPIN_T = {
+  /** Corsa libera prima del primo arresto. */
+  lead: 0.3,
+  leadTurbo: 0.12,
+  /** Intervallo fra l'inizio della frenata di un rullo e del successivo. */
+  stagger: 0.12,
+  staggerTurbo: 0.05,
+  /** Durata della frenata di un rullo. */
+  stop: 0.3,
+  stopTurbo: 0.2,
+  stopQuick: 0.15,
+  /** Attesa in piu' sul rullo "decisivo" con 2 scatter a terra. */
+  tease: 0.6,
+} as const;
 
 
 export class SlotScene extends GameScene {
@@ -215,6 +236,15 @@ export class SlotScene extends GameScene {
     this.buildFreePanel(w);
 
     this.world.addChild(halo, this.back, this.backFree, this.reelLayer, this.overlayLayer, this.frame, this.fsPanel);
+    // Un tocco sui rulli in movimento li ferma (o salta la presentazione),
+    // come il secondo click su Gira. A rulli fermi non fa partire nulla:
+    // un giro deve partire solo dal pulsante.
+    this.reelLayer.eventMode = 'static';
+    this.reelLayer.cursor = 'pointer';
+    this.reelLayer.hitArea = new Rectangle(0, 0, w, h);
+    this.reelLayer.on('pointertap', () => {
+      if (this.phase === 'spinning' || this.phase === 'presenting') this.onSpinPressed();
+    });
     this.afterBuild();
   }
 
@@ -278,6 +308,9 @@ export class SlotScene extends GameScene {
   private toggleTurbo(): void {
     this.turbo = !this.turbo;
     this.turboBtn.classList.toggle('is-on', this.turbo);
+    // Il turbo E' "Gioco rapido": ricordato fra le sessioni e valido anche
+    // per le presentazioni delle vincite.
+    actions.updateSettings({ fastPlay: this.turbo });
   }
 
   private stopAuto(): void {
@@ -367,7 +400,7 @@ export class SlotScene extends GameScene {
     if (outcome.totalPayout === 0) sfxLose();
 
     if (this.auto) {
-      const delay = outcome.totalPayout > 0 ? 900 : 350;
+      const delay = outcome.totalPayout > 0 ? 500 : 200;
       setTimeout(() => {
         if (!this.disposed && this.auto && this.phase === 'idle') void this.spin();
       }, this.turbo ? delay / 2 : delay);
@@ -405,36 +438,44 @@ export class SlotScene extends GameScene {
       reel.swapStrip(strips[r]!);
     });
 
-    await wait(turbo ? 0.25 : 0.55, () => this.quick);
+    await wait(turbo ? SPIN_T.leadTurbo : SPIN_T.lead, () => this.quick);
 
+    // Arresti IN CASCATA: ogni rullo comincia a frenare `stagger` secondi
+    // dopo il precedente, senza aspettare che quello abbia finito. Prima
+    // ogni arresto era atteso per intero e un giro durava 10-13 secondi.
     const { scatter } = symbolIndex(this.m);
-    let scatters = 0;
+    const landed: Promise<void>[] = [];
     for (let r = 0; r < this.reels.length; r++) {
       const reel = this.reels[r]!;
-      // Anticipazione: con 2 scatter gia' a terra, i rulli restanti girano
-      // piu' a lungo e la cornice della colonna si accende.
-      const tease = scatter !== null && scatters >= 2 && !this.quick;
+      // Anticipazione: con 2 scatter nei rulli precedenti (gia' noti dalla
+      // griglia decisa), il rullo successivo si fa attendere un poco.
+      const before = scatter === null ? 0 : o.grid.slice(0, r).flat().filter((x) => x === scatter).length;
+      const tease = scatter !== null && before >= 2 && !this.quick;
       if (tease) {
+        await Promise.all(landed);
+        if (this.disposed) return;
         this.anticipate(r, true);
-        await wait(1.1, () => this.quick);
+        await wait(SPIN_T.tease, () => this.quick);
       } else if (r > 0) {
-        await wait(this.quick ? 0 : turbo ? 0.06 : 0.16, () => this.quick);
+        await wait(this.quick ? 0 : turbo ? SPIN_T.staggerTurbo : SPIN_T.stagger, () => this.quick);
       }
-      await reel.stopAt(o.stops[r]!, this.quick ? 2 : 4);
       if (this.disposed) return;
-      this.anticipate(r, false);
-      sfxReelStop(r);
-      const col = o.grid[r]!;
-      if (scatter && col.includes(scatter)) {
-        scatters += col.filter((x) => x === scatter).length;
-        this.onScatterLanded(r, col.indexOf(scatter));
-      }
-      if (o.coinValues) this.showCoinValues(r, o.coinValues[r]!);
-      this.onReelLanded(r, o);
-      // Il Palazzo si espande nell'istante in cui il suo rullo si ferma:
-      // aspettare la fine di tutti i rulli smorzerebbe l'effetto.
-      if (o.expandedReels.includes(r)) await this.expandWilds([r]);
+      const dur = this.quick ? SPIN_T.stopQuick : turbo ? SPIN_T.stopTurbo : SPIN_T.stop;
+      landed.push(
+        reel.stopAt(o.stops[r]!, this.quick ? 2 : 3, dur).then(async () => {
+          if (this.disposed) return;
+          this.anticipate(r, false);
+          sfxReelStop(r);
+          const col = o.grid[r]!;
+          if (scatter && col.includes(scatter)) this.onScatterLanded(r, col.indexOf(scatter));
+          if (o.coinValues) this.showCoinValues(r, o.coinValues[r]!);
+          this.onReelLanded(r, o);
+          // Il wild si espande nell'istante in cui il suo rullo si ferma.
+          if (o.expandedReels.includes(r)) await this.expandWilds([r]);
+        })
+      );
     }
+    await Promise.all(landed);
   }
 
   /** Hook per le sottoclassi (es. monete con valore). */
@@ -526,10 +567,17 @@ export class SlotScene extends GameScene {
   /** Descrizione di una combinazione per l'HUD. */
   private winText(w: WinLine): string {
     const coins = formatMoney(w.payout);
-    if (w.kind === 'line') return ss('lineWin', { line: (w.lineIndex ?? 0) + 1, coins });
     if (w.kind === 'scatter') return ss('scatterWin', { n: w.count, coins });
     const label = symbolIndex(this.m).byId.get(w.symbol)?.label ?? w.symbol;
-    return ss('waysWin', { n: w.count, sym: label, coins });
+    if (w.kind === 'line') return ss('lineWin', { line: (w.lineIndex ?? 0) + 1, n: w.count, sym: label, coins });
+    // Modi = copie del simbolo per rullo, moltiplicate fra loro.
+    const perReel = new Map<number, number>();
+    for (const [r] of w.cells) perReel.set(r, (perReel.get(r) ?? 0) + 1);
+    let ways = 1;
+    for (const n of perReel.values()) ways *= n;
+    return ways > 1
+      ? ss('waysWinMany', { n: w.count, sym: label, ways, coins })
+      : ss('waysWin', { n: w.count, sym: label, coins });
   }
 
   private clearWins(): void {
@@ -543,6 +591,18 @@ export class SlotScene extends GameScene {
         gsap.killTweensOf(s.scale);
         s.scale.set(this.theme.symbolScale);
       }
+    }
+  }
+
+  /** Tratteggio fra due punti su `lineLayer` (Pixi non ha linee tratteggiate). */
+  private dashTo(a: { x: number; y: number }, b: { x: number; y: number }, dash = 14, space = 12): void {
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len === 0) return;
+    const ux = (b.x - a.x) / len;
+    const uy = (b.y - a.y) / len;
+    for (let d = 0; d < len; d += dash + space) {
+      const e = Math.min(len, d + dash);
+      this.lineLayer.moveTo(a.x + ux * d, a.y + uy * d).lineTo(a.x + ux * e, a.y + uy * e);
     }
   }
 
@@ -588,18 +648,32 @@ export class SlotScene extends GameScene {
       const color = LINE_COLORS[w.lineIndex % LINE_COLORS.length]!;
       const line = this.m.paylines[w.lineIndex]!;
       const pts = line.map((row, r) => ({ x: r * (cellW + gap) + cellW / 2, y: row * cellH + cellH / 2 }));
-      // Linea estesa oltre i bordi per leggerla come "che attraversa" i rulli.
+      // La linea parte da fuori dal bordo sinistro (si legge "entra dal primo
+      // rullo") ed e' piena SOLO sul tratto che paga: il resto e' tratteggiato
+      // e tenue. Prima si tracciava piena su tutti i rulli anche quando
+      // pagavano i primi tre, e la vincita sembrava casuale.
       const first = { x: pts[0]!.x - cellW / 2 - 10, y: pts[0]!.y };
-      const last = { x: pts[pts.length - 1]!.x + cellW / 2 + 10, y: pts[pts.length - 1]!.y };
-      const path = [first, ...pts, last];
+      const paid = [first, ...pts.slice(0, w.count)];
       for (const [width, alpha] of [
         [18, 0.18],
         [8, 0.55],
         [3, 1],
       ] as const) {
-        this.lineLayer.moveTo(path[0]!.x, path[0]!.y);
-        for (const p of path.slice(1)) this.lineLayer.lineTo(p.x, p.y);
+        this.lineLayer.moveTo(paid[0]!.x, paid[0]!.y);
+        for (const p of paid.slice(1)) this.lineLayer.lineTo(p.x, p.y);
         this.lineLayer.stroke({ color, width, alpha, join: 'round', cap: 'round' });
+      }
+      if (w.count < pts.length) {
+        const rest = [...pts.slice(w.count - 1), { x: pts[pts.length - 1]!.x + cellW / 2 + 10, y: pts[pts.length - 1]!.y }];
+        for (let i = 0; i < rest.length - 1; i++) this.dashTo(rest[i]!, rest[i + 1]!);
+        this.lineLayer.stroke({ color, width: 3, alpha: 0.35, cap: 'round' });
+      }
+      if (wins.length === 1) {
+        // Etichetta "3 DI FILA" sopra l'ultimo simbolo pagato.
+        const end = pts[w.count - 1]!;
+        const tag = makeText(ss('inARow', { n: w.count }), 'gold', 26);
+        tag.position.set(end.x, end.y - cellH / 2 + 22);
+        this.highlight.addChild(tag);
       }
     }
   }
@@ -615,7 +689,14 @@ export class SlotScene extends GameScene {
     this.phase = 'presenting';
     this.drawWins(wins, true);
     this.hud.setWin(Math.round(cumulative));
-    if (wins.length === 1) this.hud.message(this.winText(wins[0]!), 'win');
+    // Sempre una spiegazione: la combinazione se e' una sola, il riepilogo se
+    // sono piu' d'una (poi scorrono una alla volta, vedi `tick`).
+    this.hud.message(
+      wins.length === 1
+        ? this.winText(wins[0]!)
+        : ss('multiWin', { n: wins.length, coins: formatMoney(Math.round(o.payout)) }),
+      'win'
+    );
     const bounds = this.winCentroid(wins);
     await this.presenter.present(Math.round(o.payout), bet, { ...bounds, small: more });
     this.idleWins = wins;
@@ -666,9 +747,9 @@ export class SlotScene extends GameScene {
         total += f.freeSpinsAwarded;
         this.hud.message(ss('freeMore', { n: f.freeSpinsAwarded }), 'win');
         sfxConfirm();
-        await wait(1.2, () => this.quick);
+        await wait(0.8, () => this.quick);
       } else {
-        await wait(this.turbo ? 0.15 : 0.4, () => false);
+        await wait(this.turbo ? 0.08 : 0.2, () => false);
       }
       this.quick = false;
     }
@@ -698,7 +779,7 @@ export class SlotScene extends GameScene {
   /** Schermata di ingresso ai giri gratis. */
   private freeIntro(n: number, mult: number, _bet: number): Promise<void> {
     this.phase = 'presenting';
-    return this.titleCard(ss('freeIntro', { n }), mult > 1 ? ss('freeIntroSub', { m: mult }) : '', PALETTE.red.light, 2.4);
+    return this.titleCard(ss('freeIntro', { n }), mult > 1 ? ss('freeIntroSub', { m: mult }) : '', PALETTE.red.light, 1.4);
   }
 
   /**
@@ -824,7 +905,7 @@ export class SlotScene extends GameScene {
     this.quick = false;
     this.clearWins();
     this.hud.message('');
-    await this.titleCard(ss('hwTitle'), ss('hwSub', { n: initialCount, r: rule.respins }), PALETTE.gold.light, 2);
+    await this.titleCard(ss('hwTitle'), ss('hwSub', { n: initialCount, r: rule.respins }), PALETTE.gold.light, 1.4);
     if (this.disposed) return;
     this.quick = false;
     this.clearCoinLabels();
@@ -922,42 +1003,89 @@ export class SlotScene extends GameScene {
         sum += v;
         setSum();
         sfxCoin();
-        await wait(T(0.12), () => this.quick);
+        await wait(T(0.08), () => this.quick);
         if (this.disposed) return;
       }
     drawVeil();
-    await wait(T(0.4), () => this.quick);
+    await wait(T(0.25), () => this.quick);
 
     // ── Respin.
-    // Le celle libere "girano" cambiando simbolo a scatti: un rullo vero per
-    // cella sarebbe 24 maschere e 24 nastri per un effetto di mezzo secondo.
-    const filler = this.m.symbols.filter((d) => d.id !== rule.coin && !d.scatter).map((d) => d.id);
-    const shuffle = () => {
+    // Ogni cella libera diventa un MINI-RULLO: un nastro di simboli dentro la
+    // maschera della cella che scende e si ferma con un rimbalzo, colonna
+    // dopo colonna da sinistra. Prima le celle cambiavano solo texture a
+    // scatti e non si capiva che si stesse girando.
+    const filler = this.m.symbols.filter((d) => d.id !== rule.coin && !d.scatter && !d.wild).map((d) => d.id);
+    const pick = () => filler[Math.floor(Math.random() * filler.length)]!;
+    const spinLayer = new Container();
+    layer.addChildAt(spinLayer, 0);
+    const STRIP_N = 8;
+    let respinNo = 0;
+    for (const step of hw.respins) {
+      if (this.disposed) return;
+      respinNo++;
+      sfxSpinStart();
+      this.respinBanner(respinNo, T(0.5));
+      const landedAt = new Map(step.landed.map((c) => [`${c.reel},${c.row}`, c]));
+      const spinDur = T(0.55);
+      const colDelay = T(0.07);
+      const jobs: Promise<void>[] = [];
       for (let r = 0; r < this.m.reels; r++)
         for (let row = 0; row < rows; row++) {
           if (locked[r]![row]) continue;
-          const id = filler[Math.floor(Math.random() * filler.length)]!;
-          this.reels[r]!.setCellTexture(row, this.theme.texture(id));
+          const coin = landedAt.get(`${r},${row}`);
+          const finalId = coin ? null : pick();
+          const land = () => {
+            if (coin) {
+              placeCoin(r, row, coin.value, true);
+              sum += coin.value;
+              setSum();
+              sfxCoin();
+              drawVeil();
+            } else this.reels[r]!.setCellTexture(row, this.theme.texture(finalId!));
+          };
+          if (spinDur <= 0 || reduced) {
+            land();
+            continue;
+          }
+          // Nastro: sprite i a y = -i·cellH, l'ultimo e' l'esito; il nastro
+          // scende di (STRIP_N-1) celle e l'esito arriva al centro della cella.
+          const x = r * (cellW + gap);
+          const y = row * cellH;
+          const cellBox = new Container();
+          cellBox.position.set(x, y);
+          const mask = new Graphics().rect(0, 0, cellW, cellH).fill(PALETTE.white);
+          const tape = new Container();
+          for (let i = 0; i < STRIP_N; i++) {
+            const last = i === STRIP_N - 1;
+            const s = new Sprite(last && coin ? coinTex : this.theme.texture(last ? finalId! : pick()));
+            s.anchor.set(0.5);
+            s.scale.set(this.theme.symbolScale);
+            s.position.set(cellW / 2, cellH / 2 - i * cellH);
+            tape.addChild(s);
+          }
+          cellBox.addChild(mask, tape);
+          tape.mask = mask;
+          spinLayer.addChild(cellBox);
+          this.reels[r]!.setCellTexture(row, Texture.EMPTY);
+          jobs.push(
+            new Promise<void>((resolve) => {
+              gsap.to(tape, {
+                y: (STRIP_N - 1) * cellH,
+                duration: spinDur,
+                delay: r * colDelay,
+                ease: 'back.out(1.1)',
+                onComplete: () => {
+                  cellBox.destroy({ children: true });
+                  if (!this.disposed) land();
+                  resolve();
+                },
+              });
+            })
+          );
         }
-    };
-    for (const step of hw.respins) {
+      await Promise.all(jobs);
       if (this.disposed) return;
-      sfxSpinStart();
-      const spinEnd = performance.now() + T(0.6) * 1000;
-      while (performance.now() < spinEnd && !this.quick) {
-        if (!reduced) shuffle();
-        await wait(0.07, () => this.quick);
-        if (this.disposed) return;
-      }
-      for (const c of step.landed) {
-        placeCoin(c.reel, c.row, c.value, true);
-        sum += c.value;
-        setSum();
-        sfxCoin();
-        drawVeil();
-        await wait(T(0.22), () => this.quick);
-        if (this.disposed) return;
-      }
+      if (step.landed.length) await wait(T(0.15), () => this.quick);
       setLeft(step.left);
       if (step.landed.length > 0 && step.left > 0) {
         this.hud.message(ss('hwReset'), 'win');
@@ -967,8 +1095,9 @@ export class SlotScene extends GameScene {
         this.hud.message(ss('hwLeft', { n: step.left }));
         sfxTick(0.4);
       }
-      await wait(T(0.5), () => this.quick);
+      await wait(T(0.3), () => this.quick);
     }
+    spinLayer.destroy({ children: true });
     if (this.disposed) return;
 
     // ── Griglia piena: il GRAND, in aggiunta al valore delle monete.
@@ -979,7 +1108,7 @@ export class SlotScene extends GameScene {
         ss('hwJackpot', { name: hw.jackpot.label }),
         `${ss('hwFull')} +${formatMoney(Math.round(hw.jackpot.mult * bet))}`,
         hw.jackpot.tint,
-        2.6
+        1.8
       );
       if (this.disposed) return;
       sum += hw.jackpot.mult;
@@ -987,7 +1116,18 @@ export class SlotScene extends GameScene {
     }
 
     // ── Totale. Il presentatore gestisce da se' skip e fastPlay.
-    this.hud.message('');
+    // Il riepilogo in chiaro spiega da dove viene la cifra.
+    const coinSum = hw.jackpot ? sum - hw.jackpot.mult : sum;
+    this.hud.message(
+      hw.jackpot
+        ? ss('hwSummaryJp', {
+            coins: formatMoney(Math.round(coinSum * bet)),
+            jp: formatMoney(Math.round(hw.jackpot.mult * bet)),
+            total: formatMoney(Math.round(hw.payout)),
+          })
+        : ss('hwSummary', { coins: formatMoney(Math.round(coinSum * bet)), total: formatMoney(Math.round(hw.payout)) }),
+      'win'
+    );
     this.hud.setWin(o.totalPayout);
     this.phase = 'presenting';
     await this.presenter.present(Math.round(hw.payout), bet, { forceBig: true, title: ss('hwTotal').toUpperCase() });
@@ -1006,6 +1146,89 @@ export class SlotScene extends GameScene {
     layer.destroy({ children: true });
     panel.destroy({ children: true });
     this.quick = false;
+  }
+
+  /** Scritta "RESPIN n" al centro dei rulli, a ogni respin dell'Hold & Win. */
+  private respinBanner(n: number, sec: number): void {
+    if (sec <= 0) return;
+    const { w, h } = windowSize(this.geo);
+    const t = makeText(ss('hwRespinN', { n }), 'gold', 84);
+    t.position.set(this.ox + w / 2, this.oy + h / 2);
+    t.alpha = 0;
+    t.scale.set(0.6);
+    this.world.addChild(t);
+    gsap
+      .timeline({ onComplete: () => t.destroy() })
+      .to(t, { alpha: 1, duration: sec * 0.25 }, 0)
+      .to(t.scale, { x: 1, y: 1, duration: sec * 0.4, ease: 'back.out(2)' }, 0)
+      .to(t, { alpha: 0, duration: sec * 0.35 }, sec * 0.65);
+  }
+
+  /**
+   * Schema "come si vince": la griglia della macchina in piccolo, con un
+   * esempio di combinazione vincente. Linee: tre simboli uguali dal primo
+   * rullo lungo la linea centrale, poi il tratto che non conta. Ways: lo
+   * stesso simbolo sui primi tre rulli in righe diverse, due volte sul
+   * secondo (= 2 combinazioni).
+   */
+  private howToWinExample(symCanvas: (id: SymId) => HTMLCanvasElement): HTMLElement {
+    const m = this.m;
+    const cell = 52;
+    const pad = 6;
+    const c = document.createElement('canvas');
+    c.width = m.reels * cell + pad * 2;
+    c.height = m.rows * cell + pad * 2;
+    c.className = 'go-pay__example';
+    const ctx = c.getContext('2d')!;
+    const pay = m.symbols.find((s) => !s.wild && !s.scatter && s.pays && Object.keys(s.pays).includes('3'));
+    const icon = pay ? symCanvas(pay.id) : null;
+    const mid = Math.floor(m.rows / 2);
+    const hits: [number, number][] =
+      m.evalMode === 'ways'
+        ? [[0, mid], [1, 0], [1, m.rows - 1], [2, mid > 0 ? mid - 1 : 0]]
+        : [[0, mid], [1, mid], [2, mid]];
+    const isHit = (r: number, row: number) => hits.some(([a, b]) => a === r && b === row);
+    for (let r = 0; r < m.reels; r++)
+      for (let row = 0; row < m.rows; row++) {
+        const x = pad + r * cell;
+        const y = pad + row * cell;
+        const hit = isHit(r, row);
+        ctx.fillStyle = rgba(hit ? PALETTE.gold.core : PALETTE.text.strong, hit ? 0.28 : 0.07);
+        ctx.fillRect(x + 2, y + 2, cell - 4, cell - 4);
+        if (hit && icon) ctx.drawImage(icon, x + 4, y + 4, cell - 8, cell - 8);
+      }
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = rgba(PALETTE.gold.light, 1);
+    const ctr = (r: number, row: number) => [pad + r * cell + cell / 2, pad + row * cell + cell / 2] as const;
+    if (m.evalMode === 'lines') {
+      const [x0, y0] = ctr(0, mid);
+      const [x2] = ctr(2, mid);
+      ctx.beginPath();
+      ctx.moveTo(x0 - cell / 2, y0);
+      ctx.lineTo(x2, y0);
+      ctx.stroke();
+      ctx.setLineDash([8, 7]);
+      ctx.strokeStyle = rgba(PALETTE.gold.light, 0.4);
+      ctx.beginPath();
+      ctx.moveTo(x2, y0);
+      ctx.lineTo(pad + m.reels * cell, y0);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      // Ogni copia sul rullo 2 si collega alla prima e alla terza: si vedono
+      // due percorsi, cioe' due combinazioni.
+      const [a0, b0] = ctr(...hits[0]!);
+      const [c0, d0] = ctr(...hits[3]!);
+      for (const h of [hits[1]!, hits[2]!]) {
+        const [x, y] = ctr(...h);
+        ctx.moveTo(a0, b0);
+        ctx.lineTo(x, y);
+        ctx.lineTo(c0, d0);
+      }
+      ctx.stroke();
+    }
+    return div('go-pay__how', c, el('span', { text: ss(m.evalMode === 'ways' ? 'rulesHowWaysEx' : 'rulesHowLinesEx', { sym: pay?.label ?? '' }) }));
   }
 
   // ═══════════════════════════════════════════════ FRAME
@@ -1028,6 +1251,19 @@ export class SlotScene extends GameScene {
 
   // ═══════════════════════════════════════════════ REGOLE
 
+  protected tutorialGame(): TutorialStep[] {
+    const { w, h } = windowSize(this.geo);
+    return [
+      {
+        title: ss('tutReelsT'),
+        text: ss(this.m.evalMode === 'ways' ? 'tutReelsWays' : 'tutReelsLines'),
+        target: this.designTarget(this.ox, this.oy, w, h),
+      },
+      { title: ss('tutFeatT'), text: this.theme.features().join(' ') },
+      { title: ss('tutTurboT'), text: ss('tutTurboX'), target: '.go-hud__extra' },
+    ];
+  }
+
   protected rules(): Node {
     const m = this.m;
     const symCanvas = (id: SymId) => {
@@ -1040,13 +1276,17 @@ export class SlotScene extends GameScene {
       return c;
     };
 
+    // Premi anche IN EURO alla puntata attuale: "5× — 700" da solo non dice
+    // quanto si vince davvero.
+    const bet = wallet().bet;
+    const euro = (mult: number, onTotal: boolean) => formatMoney(Math.round((mult * bet) / (onTotal ? 1 : m.betDivisor)));
     const pays = div('go-pay__grid');
     for (const s of m.symbols) {
       const rows: string[] = [];
       const table = s.scatter ? s.scatterPays : s.pays;
       if (table) {
         for (const [k, v] of Object.entries(table).sort((a, b) => Number(b[0]) - Number(a[0]))) {
-          rows.push(`${k}× — ${v}`);
+          rows.push(`${k}× — ${v} (${euro(v, !!s.scatter)})`);
         }
       }
       if (s.freeSpins) {
@@ -1082,6 +1322,11 @@ export class SlotScene extends GameScene {
 
     return div(
       'go-pay',
+      el('h3', { text: ss('rulesHow') }),
+      this.howToWinExample(symCanvas),
+      el('p', { text: ss(m.evalMode === 'ways' ? 'rulesHowWays' : 'rulesHowLines') }),
+      m.evalMode === 'ways' ? el('p', { class: 'go-pay__note', text: ss('rulesStacks') }) : null,
+      el('p', { class: 'go-pay__note', text: ss('rulesBetNow', { bet: formatMoney(bet) }) }),
       el('h3', { text: ss('rulesFeatures') }),
       ...this.theme.features().map((p) => el('p', { text: p })),
       el('h3', { text: ss('rulesPays') }),

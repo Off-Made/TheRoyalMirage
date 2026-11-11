@@ -12,9 +12,11 @@
  *      del dato rotto in una chiave di backup, per non perderlo del tutto
  */
 
+import { migrateLegacyXp } from './progression';
+
 export const SAVE_KEY = 'golden-oasis:save';
 const BACKUP_KEY = 'golden-oasis:save:corrupt-backup';
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 interface Envelope<T> {
   version: number;
@@ -42,6 +44,16 @@ const migrations: Record<number, Migration> = {
   1: (data) => {
     const { wallets: _wallets, ...rest } = data;
     return rest;
+  },
+  /**
+   * 2 → 3: nuova curva dell'XP (a giro, non piu' 1 XP per centesimo). Il
+   * rango raggiunto si conserva e l'XP riparte dall'inizio di quel rango
+   * nella curva nuova, senza ripagare premi.
+   */
+  2: (data) => {
+    const p = data.progression;
+    if (!isObject(p) || typeof p.xp !== 'number') return data;
+    return { ...data, progression: { ...p, ...migrateLegacyXp(p.xp) } };
   },
 };
 

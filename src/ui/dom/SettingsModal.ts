@@ -101,6 +101,30 @@ export function openSettings(onLanguageChanged?: () => void): void {
         'settings.fastPlay',
         toggle(s.fastPlay, (v) => actions.updateSettings({ fastPlay: v })),
         'settings.fastPlayHint'
+      ),
+      fieldRow(
+        'settings.vpTapMode',
+        segmented<'hold' | 'discard'>(
+          [
+            { value: 'hold', label: t('settings.vpTapHold') },
+            { value: 'discard', label: t('settings.vpTapDiscard') },
+          ],
+          s.vpTapMode,
+          (v) => actions.updateSettings({ vpTapMode: v })
+        ),
+        'settings.vpTapModeHint'
+      ),
+      fieldRow(
+        'settings.tutorials',
+        button(t('settings.tutorialsBtn'), {
+          variant: 'secondary',
+          size: 'sm',
+          onClick: () => {
+            actions.resetTutorials();
+            toast(t('settings.tutorialsDone'), 'info');
+          },
+        }),
+        'settings.tutorialsHint'
       )
     ),
 
