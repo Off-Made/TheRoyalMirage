@@ -8,7 +8,8 @@ export const bs = defineStrings({
   it: {
     deal: 'Distribuisci',
     dealing: 'In gioco…',
-    clear: 'Annulla',
+    clear: 'Ritira tutto',
+    undo: 'Annulla',
     rebet: 'Ripeti',
     player: 'Punto',
     banker: 'Banco',
@@ -71,6 +72,7 @@ export const bs = defineStrings({
     deal: 'Deal',
     dealing: 'Playing…',
     clear: 'Clear',
+    undo: 'Undo',
     rebet: 'Rebet',
     player: 'Player',
     banker: 'Banker',

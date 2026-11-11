@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { evaluateGrid } from '@/games/slots/engine/spin';
 import { buildStrip } from '@/games/slots/engine/strips';
 import { GOLDEN_OASIS as M } from '@/games/slots/machines/goldenOasis';
+import { DESERT_FALCON } from '@/games/slots/machines/desertFalcon';
 import type { Grid } from '@/games/slots/engine/types';
 
 /** Griglia 5x3 da righe leggibili: ['AAAAA', 'KKKKK', ...] (riga 0 in alto). */
@@ -16,17 +17,37 @@ const BET = 20; // puntata di linea 1
 const stops = [0, 0, 0, 0, 0];
 
 describe('linee', () => {
-  it('paga 5 Falchi sulla linea centrale con la paytable', () => {
+  it('paga 5 Sette sulla linea centrale con la paytable', () => {
     const o = evaluateGrid(M, rows('AKQJT', 'FFFFF', 'TJQKA'), stops, BET, 'base');
     const w = o.wins.find((x) => x.lineIndex === 0)!;
     expect(w.symbol).toBe('F');
     expect(w.count).toBe(5);
-    expect(w.payout).toBe(700);
+    expect(w.payout).toBe(630);
+    expect(w.startReel).toBe(0);
   });
 
-  it('non paga meno di tre simboli consecutivi da sinistra', () => {
+  it('non paga meno di tre simboli consecutivi', () => {
     const o = evaluateGrid(M, rows('AKQJT', 'FFKFF', 'TJQKA'), stops, BET, 'base');
     expect(o.wins.find((x) => x.lineIndex === 0)).toBeUndefined();
+  });
+
+  it('paga anche un tris sui rulli 3-4-5, non solo dal rullo 1', () => {
+    const o = evaluateGrid(M, rows('AKQJT', 'KTFFF', 'TJQKA'), stops, BET, 'base');
+    const w = o.wins.find((x) => x.lineIndex === 0)!;
+    expect(w.symbol).toBe('F');
+    expect(w.count).toBe(3);
+    expect(w.startReel).toBe(2);
+    expect(w.cells).toEqual([[2, 1], [3, 1], [4, 1]]);
+    expect(w.payout).toBeCloseTo(11.4);
+  });
+
+  it('paga un tris centrale (rulli 2-3-4) e tiene la combinazione migliore della linea', () => {
+    const mid = evaluateGrid(M, rows('AKQJT', 'KFFFT', 'TJQKA'), stops, BET, 'base');
+    expect(mid.wins.find((x) => x.lineIndex === 0)).toMatchObject({ symbol: 'F', count: 3, startReel: 1 });
+    // Quattro Sette dal rullo 2 battono qualunque tris contenuto nella stessa corsa.
+    const four = evaluateGrid(M, rows('AKQJT', 'KFFFF', 'TJQKA'), stops, BET, 'base');
+    expect(four.wins.filter((x) => x.lineIndex === 0)).toHaveLength(1);
+    expect(four.wins.find((x) => x.lineIndex === 0)).toMatchObject({ count: 4, startReel: 1, payout: 70 });
   });
 
   it('il wild espanso completa le linee che attraversano il suo rullo', () => {
@@ -56,7 +77,24 @@ describe('scatter', () => {
 
   it('il moltiplicatore dei giri gratis si applica a tutte le vincite', () => {
     const o = evaluateGrid(M, rows('AKQJT', 'FFFFF', 'TJQKA'), stops, BET, 'free', 3);
-    expect(o.wins.find((x) => x.lineIndex === 0)!.payout).toBe(2100);
+    expect(o.wins.find((x) => x.lineIndex === 0)!.payout).toBe(1890);
+  });
+});
+
+describe('ways', () => {
+  it('paga un simbolo presente su 3 rulli adiacenti anche se manca dai primi due', () => {
+    // Colonne (rullo per rullo, riga 0 in alto). Solo H compare su 3 rulli di fila.
+    const grid: Grid = [
+      ['A', 'K', 'Q', 'J'],
+      ['T', 'P', 'F', 'R'],
+      ['H', 'A', 'K', 'Q'],
+      ['H', 'T', 'P', 'J'],
+      ['H', 'F', 'R', 'A'],
+    ];
+    const o = evaluateGrid(DESERT_FALCON, grid, stops, DESERT_FALCON.betDivisor, 'base');
+    expect(o.wins).toHaveLength(1);
+    expect(o.wins[0]).toMatchObject({ kind: 'ways', symbol: 'H', count: 3, startReel: 2 });
+    expect(o.wins[0]!.payout).toBeCloseTo(DESERT_FALCON.symbols.find((s) => s.id === 'H')!.pays![3]!);
   });
 });
 

@@ -152,7 +152,7 @@ export function openProfile(): void {
   );
 
   // ── Storico
-  const rows = w.history.slice(0, 14).map((h) => {
+  const rows = w.history.slice(0, 6).map((h) => {
     const profit = h.payout - h.bet;
     const amount = el('span', {
       class: 'go-hrow__amount numeric',

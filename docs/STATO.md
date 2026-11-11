@@ -1,5 +1,25 @@
 # THE ROYAL MIRAGE — Stato dei lavori
 
+## Punto di ripresa — 11/11/2026 (pomeriggio): ULTIME RIFINITURE, secondo giro di appunti
+
+Piano: `~/.claude/plans/voglio-andare-ad-attuare-wise-ladybug.md`. Verifica: `tsc` pulito · **466/466 test**
+(slot RTP compreso) · collaudo a schermo `node tools/qa-polish.mjs <porta>` tutto OK, nessun errore in console.
+
+| Area | Cosa | File |
+|---|---|---|
+| Slot: regola | si vince con 3+ simboli uguali su rulli ADIACENTI da qualunque rullo (1-2-3, 2-3-4, 3-4-5…), linee e ways; `WinLine.startReel`; la linea piena parte dal rullo giusto, tratteggio prima e dopo | `engine/evaluate.ts` (`MIN_RUN`), `SlotScene.drawWins`, `view/strings.ts` |
+| Slot: ritaratura | premi da 3/4 ridotti (5 di fila quasi intatti), Diamond Royale con pile da 3 su K/Q/J/T (hit rate 62%→56%); RTP col seme del test: 96,33 / 95,94 / 95,86. Strumento: `tools/tune-adjacent.ts` | `machines/*.ts` |
+| Slot: tempi | giro normale ~+60%; il vecchio normale è ora il Turbo | `SlotScene.ts` `SPIN_T` |
+| Presentazione | 3 interruttori (vincite grandi ≥25×, giri gratis, Hold & Win) in fondo alle Impostazioni SOLO in modalità Libera; ~1 giro su 3 ri-estratto finché soddisfa il criterio (max 2000 tentativi). Motore e RTP intatti | `games/slots/demo.ts`, `SettingsModal.ts`, `settings.ts` |
+| Golden Chip | dopo l'incasso il volo PROSEGUE fino al crash (il committente ci ha ripensato): saldo accreditato subito, pallino verde "×N" sulla curva, schianto finale con messaggio "Incassato a ×N — schianto a ×M" | `CrashScene.cashOut/boom/endFlight` |
+| Baccarat | targhetta con l'importo per area (la pila si ricompone nei tagli e sembrava sostituire); "Annulla" = ultima fiche, il vecchio "Annulla" ora è "Ritira tutto"; tutorial "Il tabellone" inquadra i pannelli (prima: Graphics vuota → angolo in alto) | `BaccaratScene.ts`, `board.ts` |
+| Tasti | S/P non aprono Impostazioni/Profilo dentro un gioco (erano Stai/Split del blackjack) | `ui/Shell.ts` |
+| Video poker | pulsante "Tocco: Tieni/Scarta" al tavolo, attivo solo a mano ferma | `VideoPokerScene.ts` |
+| XP | `max(1, round(1,25 + log2(1 + €)))` ≈ 1/8 di prima: massimo in ~3-4 settimane; soglie invariate, nessuna migrazione | `progression.ts` |
+| Profilo | storico a 6 righe | `ProfileModal.ts` |
+
+Tutorial: il pulsante "Avanti" NON è stato toccato (un sito non può spostare il mouse; il committente ha scelto di lasciarlo così).
+
 ## Punto di ripresa — 11/11/2026: RIFINITURA dagli appunti di collaudo del committente
 
 Piano approvato: `~/.claude/plans/questo-il-mio-kind-walrus.md`. Verifica: `tsc` pulito ·

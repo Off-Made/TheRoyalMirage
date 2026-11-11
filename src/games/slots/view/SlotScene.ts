@@ -30,7 +30,8 @@ import { preloadImages } from '@/art/images';
 import { t as tr } from '@/i18n';
 import { gameById } from '@/games/registry';
 import { bake } from '@/art/textureCache';
-import { wallet, settings, actions } from '@/state/store';
+import { wallet, settings, actions, store } from '@/state/store';
+import { demoCriterion, demoRound } from '../demo';
 import { formatMoney } from '@/state/wallet';
 import { sfxReelStop, sfxSpinStart, sfxWin, sfxCoin, sfxTick, sfxLose, sfxConfirm, sfxJackpot } from '@/audio/synth';
 import { defaultRng, type Rng } from '../engine/rng';
@@ -82,19 +83,21 @@ export interface SlotTheme {
 const LINE_COLORS = PAYLINE_COLORS;
 
 /**
- * Tempi del giro, in secondi. Obiettivo: ~1,2-1,6 s a giro normale, ~0,6 s
- * in turbo, contando dal click all'ultimo rullo fermo.
+ * Tempi del giro, in secondi, contando dal click all'ultimo rullo fermo:
+ * ~1,7 s a giro normale, ~1,1 s in turbo. Il turbo e' il ritmo "normale"
+ * della taratura dell'11/11: il committente ha chiesto un giro un poco piu'
+ * lungo e di tenere quel tempo come modalita' veloce.
  */
 const SPIN_T = {
   /** Corsa libera prima del primo arresto. */
-  lead: 0.3,
-  leadTurbo: 0.12,
+  lead: 0.55,
+  leadTurbo: 0.3,
   /** Intervallo fra l'inizio della frenata di un rullo e del successivo. */
-  stagger: 0.12,
-  staggerTurbo: 0.05,
+  stagger: 0.2,
+  staggerTurbo: 0.12,
   /** Durata della frenata di un rullo. */
-  stop: 0.3,
-  stopTurbo: 0.2,
+  stop: 0.42,
+  stopTurbo: 0.3,
   stopQuick: 0.15,
   /** Attesa in piu' sul rullo "decisivo" con 2 scatter a terra. */
   tease: 0.6,
@@ -343,7 +346,9 @@ export class SlotScene extends GameScene {
       this.stopAuto();
       return;
     }
-    let outcome = playRound(this.m, bet, this.rng);
+    // Presentazione: solo in modalita' Libera, un giro su tre circa (`demo.ts`).
+    const demo = demoCriterion(this.m, bet, store.getState().mode, settings(), Math.random());
+    let outcome = demo ? demoRound(this.m, bet, this.rng, demo) : playRound(this.m, bet, this.rng);
     // Solo sviluppo: `GO.slot.want = (o) => o.free.length > 0` forza un esito
     // con la caratteristica voluta, per collaudare le animazioni rare.
     if (import.meta.env.DEV && this.want) {
@@ -433,8 +438,8 @@ export class SlotScene extends GameScene {
     sfxSpinStart();
 
     this.reels.forEach((reel, r) => {
-      reel.maxSpeed = turbo ? 24 : 17;
-      reel.start(turbo ? 0 : r * 0.07);
+      reel.maxSpeed = this.quick ? 24 : 17;
+      reel.start(this.quick ? 0 : r * (turbo ? 0.07 : 0.09));
       reel.swapStrip(strips[r]!);
     });
 
@@ -648,12 +653,14 @@ export class SlotScene extends GameScene {
       const color = LINE_COLORS[w.lineIndex % LINE_COLORS.length]!;
       const line = this.m.paylines[w.lineIndex]!;
       const pts = line.map((row, r) => ({ x: r * (cellW + gap) + cellW / 2, y: row * cellH + cellH / 2 }));
-      // La linea parte da fuori dal bordo sinistro (si legge "entra dal primo
-      // rullo") ed e' piena SOLO sul tratto che paga: il resto e' tratteggiato
-      // e tenue. Prima si tracciava piena su tutti i rulli anche quando
-      // pagavano i primi tre, e la vincita sembrava casuale.
-      const first = { x: pts[0]!.x - cellW / 2 - 10, y: pts[0]!.y };
-      const paid = [first, ...pts.slice(0, w.count)];
+      // La linea e' piena SOLO sul tratto che paga (che puo' partire da
+      // qualunque rullo); il resto e' tratteggiato e tenue, da bordo a bordo.
+      // Se il tratto parte dal rullo 1, entra da fuori del bordo sinistro.
+      const start = w.startReel ?? 0;
+      const end = start + w.count - 1;
+      const left = { x: pts[0]!.x - cellW / 2 - 10, y: pts[0]!.y };
+      const right = { x: pts[pts.length - 1]!.x + cellW / 2 + 10, y: pts[pts.length - 1]!.y };
+      const paid = [...(start === 0 ? [left] : []), ...pts.slice(start, end + 1)];
       for (const [width, alpha] of [
         [18, 0.18],
         [8, 0.55],
@@ -663,16 +670,17 @@ export class SlotScene extends GameScene {
         for (const p of paid.slice(1)) this.lineLayer.lineTo(p.x, p.y);
         this.lineLayer.stroke({ color, width, alpha, join: 'round', cap: 'round' });
       }
-      if (w.count < pts.length) {
-        const rest = [...pts.slice(w.count - 1), { x: pts[pts.length - 1]!.x + cellW / 2 + 10, y: pts[pts.length - 1]!.y }];
-        for (let i = 0; i < rest.length - 1; i++) this.dashTo(rest[i]!, rest[i + 1]!);
-        this.lineLayer.stroke({ color, width: 3, alpha: 0.35, cap: 'round' });
-      }
+      const dashed = (seg: { x: number; y: number }[]) => {
+        for (let i = 0; i < seg.length - 1; i++) this.dashTo(seg[i]!, seg[i + 1]!);
+      };
+      if (start > 0) dashed([left, ...pts.slice(0, start + 1)]);
+      if (end < pts.length - 1) dashed([...pts.slice(end), right]);
+      if (start > 0 || end < pts.length - 1) this.lineLayer.stroke({ color, width: 3, alpha: 0.35, cap: 'round' });
       if (wins.length === 1) {
         // Etichetta "3 DI FILA" sopra l'ultimo simbolo pagato.
-        const end = pts[w.count - 1]!;
+        const last = pts[end]!;
         const tag = makeText(ss('inARow', { n: w.count }), 'gold', 26);
-        tag.position.set(end.x, end.y - cellH / 2 + 22);
+        tag.position.set(last.x, last.y - cellH / 2 + 22);
         this.highlight.addChild(tag);
       }
     }

@@ -94,6 +94,13 @@ export interface SettingsState {
    * SCARTA (piu' intuitivo per chi impara).
    */
   vpTapMode: 'hold' | 'discard';
+  /**
+   * Presentazione (solo modalita' Libera, vedi `games/slots/demo.ts`):
+   * slot con vincite grandi, giri gratis e Hold & Win piu' frequenti.
+   */
+  demoBigWins: boolean;
+  demoFreeSpins: boolean;
+  demoHoldWin: boolean;
   /** Auto-spin: numero di spin consecutivi. 0 = disattivato. */
   autoSpinCount: number;
 }
@@ -140,6 +147,9 @@ export function initialSettings(): SettingsState {
     fastPlay: false,
     showFps: false,
     vpTapMode: 'hold',
+    demoBigWins: false,
+    demoFreeSpins: false,
+    demoHoldWin: false,
     autoSpinCount: 0,
   };
 }

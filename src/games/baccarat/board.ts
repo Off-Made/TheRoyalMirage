@@ -23,6 +23,8 @@ export class BetBoard {
   bets: Bets = emptyBets();
   /** Puntate dell'ultimo colpo giocato, per "Ripeti". */
   last: Bets | null = null;
+  /** Fiche posate una per una, per "Annulla". Si azzera con Ritira, Ripeti e Distribuisci. */
+  private placed: { area: BetArea; amount: number }[] = [];
 
   get total(): number {
     return totalBet(this.bets);
@@ -30,6 +32,10 @@ export class BetBoard {
 
   get empty(): boolean {
     return this.total === 0;
+  }
+
+  get canUndo(): boolean {
+    return this.placed.length > 0;
   }
 
   /**
@@ -41,13 +47,23 @@ export class BetBoard {
     if (!Number.isFinite(n) || n <= 0) return 'invalid';
     if (this.total + n > available) return 'insufficient';
     this.bets = { ...this.bets, [area]: this.bets[area] + n };
+    this.placed.push({ area, amount: n });
     return 'ok';
+  }
+
+  /** Toglie l'ultima fiche posata. false se non c'e' nulla da annullare. */
+  undo(): boolean {
+    const last = this.placed.pop();
+    if (!last) return false;
+    this.bets = { ...this.bets, [last.area]: Math.max(0, this.bets[last.area] - last.amount) };
+    return true;
   }
 
   /** Ritira tutte le fiche. Restituisce quante erano. */
   clear(): number {
     const t = this.total;
     this.bets = emptyBets();
+    this.placed = [];
     return t;
   }
 
@@ -56,6 +72,7 @@ export class BetBoard {
     if (!this.last || totalBet(this.last) === 0) return 'none';
     if (totalBet(this.last) > available) return 'insufficient';
     this.bets = { ...this.last };
+    this.placed = [];
     return 'ok';
   }
 
@@ -67,6 +84,7 @@ export class BetBoard {
     const b = { ...this.bets };
     this.last = b;
     this.bets = emptyBets();
+    this.placed = [];
     return b;
   }
 }

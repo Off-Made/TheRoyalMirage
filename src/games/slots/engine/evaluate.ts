@@ -54,7 +54,18 @@ export function expandWilds(m: MachineDef, grid: Grid, phase: 'base' | 'free'): 
   return { grid: out, reels };
 }
 
-/** Vincite su linee fisse, da sinistra a destra. */
+/**
+ * Lunghezza minima di una combinazione che NON parte dal rullo 1. Dal rullo 1
+ * vale la tabella dei premi (che oggi parte comunque da 3); altrove servono
+ * almeno 3 simboli di fila, altrimenti una coppia qualunque pagherebbe.
+ */
+export const MIN_RUN = 3;
+
+/**
+ * Vincite su linee fisse: 3 o piu' simboli uguali su rulli ADIACENTI della
+ * linea, letti da sinistra a destra ma a partire da QUALUNQUE rullo (1-2-3,
+ * 2-3-4, 3-4-5...). Una sola vincita per linea, la migliore.
+ */
 export function evaluateLines(m: MachineDef, grid: Grid, lineBet: number, mult: number): WinLine[] {
   const { byId, wild } = symbolIndex(m);
   const wins: WinLine[] = [];
@@ -63,32 +74,37 @@ export function evaluateLines(m: MachineDef, grid: Grid, lineBet: number, mult: 
 
   m.paylines.forEach((line, lineIndex) => {
     const syms = line.map((row, reel) => grid[reel]![row]!);
-
-    // Corsa di soli wild in testa: puo' pagare da sola (se il wild ha pays)
-    // o "diventare" il primo simbolo pagante che la interrompe.
-    let wildRun = 0;
-    while (wildRun < syms.length && syms[wildRun] === wild) wildRun++;
-
     let best: WinLine | null = null;
+    const consider = (w: WinLine) => {
+      if (w.payout > 0 && (!best || w.payout > best.payout)) best = w;
+    };
 
-    if (wildDef?.pays && wildRun > 0) {
-      const p = wildDef.pays[wildRun] ?? 0;
-      if (p > 0) {
-        best = mkLine(wild!, wildRun, lineIndex, line, p * lineBet * mult, mult);
+    for (let s = 0; s <= syms.length - (s === 0 ? 1 : MIN_RUN); s++) {
+      // Una corsa che inizia DENTRO un'altra dello stesso simbolo e' solo
+      // la sua coda, piu' corta: non puo' pagare di piu'.
+      if (s > 0 && syms[s - 1] === syms[s] && syms[s] !== wild) continue;
+
+      // Corsa di soli wild in testa: puo' pagare da sola (se il wild ha pays)
+      // o "diventare" il primo simbolo pagante che la interrompe.
+      let wildEnd = s;
+      while (wildEnd < syms.length && syms[wildEnd] === wild) wildEnd++;
+      const wildRun = wildEnd - s;
+
+      if (wildDef?.pays && wildRun > 0 && (s === 0 || wildRun >= MIN_RUN)) {
+        const p = wildDef.pays[wildRun] ?? 0;
+        if (p > 0) consider(mkLine(wild!, s, wildRun, lineIndex, line, p * lineBet * mult, mult));
       }
-    }
 
-    const target = syms[wildRun];
-    const tdef = target !== undefined ? byId.get(target) : undefined;
-    if (tdef && !tdef.scatter && tdef.pays) {
-      let n = wildRun;
+      const target = syms[wildEnd];
+      const tdef = target !== undefined ? byId.get(target) : undefined;
+      if (!tdef || tdef.scatter || !tdef.pays) continue;
+      let n = wildEnd;
       while (n < syms.length && (syms[n] === target || syms[n] === wild)) n++;
-      const usesWild = syms.slice(0, n).includes(wild!);
+      const count = n - s;
+      if (s > 0 && count < MIN_RUN) continue;
+      const usesWild = syms.slice(s, n).includes(wild!);
       const k = mult * (usesWild ? wildMult : 1);
-      const pay = (tdef.pays[n] ?? 0) * lineBet * k;
-      if (pay > 0 && (!best || pay > best.payout)) {
-        best = mkLine(target!, n, lineIndex, line, pay, k);
-      }
+      consider(mkLine(target!, s, count, lineIndex, line, (tdef.pays[count] ?? 0) * lineBet * k, k));
     }
 
     if (best) wins.push(best);
@@ -98,6 +114,7 @@ export function evaluateLines(m: MachineDef, grid: Grid, lineBet: number, mult: 
 
 function mkLine(
   symbol: SymId,
+  startReel: number,
   count: number,
   lineIndex: number,
   line: readonly number[],
@@ -108,17 +125,19 @@ function mkLine(
     kind: 'line',
     symbol,
     count,
+    startReel,
     lineIndex,
-    cells: line.slice(0, count).map((row, reel) => [reel, row] as const),
+    cells: line.slice(startReel, startReel + count).map((row, i) => [startReel + i, row] as const),
     payout,
     multiplier,
   };
 }
 
 /**
- * Vincite "ways": un simbolo vince se compare su rulli ADIACENTI da sinistra,
- * in qualunque riga. Il numero di modi e' il prodotto delle occorrenze.
- * Una sola vincita per simbolo, pagata `pays[len] * modi`.
+ * Vincite "ways": un simbolo vince se compare su 3 o piu' rulli ADIACENTI,
+ * a partire da qualunque rullo, in qualunque riga. Il numero di modi e' il
+ * prodotto delle occorrenze sul tratto. Una sola vincita per simbolo (il
+ * tratto che paga di piu'), pagata `pays[len] * modi`.
  */
 export function evaluateWays(m: MachineDef, grid: Grid, bet: number, mult: number): WinLine[] {
   const { paying, wild } = symbolIndex(m);
@@ -126,28 +145,41 @@ export function evaluateWays(m: MachineDef, grid: Grid, bet: number, mult: numbe
   const wildMult = m.wild?.multiplier ?? 1;
 
   for (const s of paying) {
-    let ways = 1;
-    let len = 0;
-    let usesWild = false;
-    const cells: [number, number][] = [];
-    for (let r = 0; r < grid.length; r++) {
-      let n = 0;
-      grid[r]!.forEach((id, row) => {
-        if (id === s.id || id === wild) {
-          n++;
-          cells.push([r, row]);
-          if (id === wild) usesWild = true;
-        }
-      });
-      if (n === 0) break;
-      ways *= n;
-      len++;
+    // Occorrenze (simbolo o wild) rullo per rullo.
+    const per = grid.map((col) => col.reduce((n, id) => n + (id === s.id || id === wild ? 1 : 0), 0));
+    let best: WinLine | null = null;
+    let r = 0;
+    while (r < grid.length) {
+      if (per[r] === 0) {
+        r++;
+        continue;
+      }
+      // Tratto massimale di rulli consecutivi che contengono il simbolo: a
+      // parita' di inizio, piu' lungo paga sempre di piu' (premi e modi crescono).
+      const from = r;
+      let ways = 1;
+      while (r < grid.length && per[r]! > 0) ways *= per[r++]!;
+      const len = r - from;
+      if (from > 0 && len < MIN_RUN) continue;
+      const p = s.pays![len] ?? 0;
+      if (p <= 0) continue;
+      const cells: [number, number][] = [];
+      let usesWild = false;
+      for (let c = from; c < r; c++) {
+        grid[c]!.forEach((id, row) => {
+          if (id === s.id || id === wild) {
+            cells.push([c, row]);
+            if (id === wild) usesWild = true;
+          }
+        });
+      }
+      const k = mult * (usesWild ? wildMult : 1);
+      const payout = p * bet * ways * k;
+      if (!best || payout > best.payout) {
+        best = { kind: 'ways', symbol: s.id, count: len, startReel: from, cells, payout, multiplier: k };
+      }
     }
-    const p = s.pays![len] ?? 0;
-    if (p <= 0) continue;
-    const keep = cells.filter(([r]) => r < len);
-    const k = mult * (usesWild ? wildMult : 1);
-    wins.push({ kind: 'ways', symbol: s.id, count: len, cells: keep, payout: p * bet * ways * k, multiplier: k });
+    if (best) wins.push(best);
   }
   return wins;
 }

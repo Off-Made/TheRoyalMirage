@@ -444,11 +444,13 @@ class ShellImpl {
           break;
         case 's':
         case 'S':
-          openSettings(() => this.retranslate());
+          // Dentro un gioco S e P sono mosse (Stai, Split in inglese): le
+          // Impostazioni e il Profilo restano raggiungibili dai pulsanti.
+          if (this.view !== 'game') openSettings(() => this.retranslate());
           break;
         case 'p':
         case 'P':
-          openProfile();
+          if (this.view !== 'game') openProfile();
           break;
       }
     });

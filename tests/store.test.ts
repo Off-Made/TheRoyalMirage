@@ -194,7 +194,7 @@ describe('betCeiling — puntata libera', () => {
     const all = balance();
     expect(S.wallet().bet).toBe(all);
     expect(S.actions.placeBet('test', S.wallet().bet)).toBe(true);
-    // Il saldo NON torna necessariamente a zero: puntare 100 € fa salire di
+    // Il saldo NON torna necessariamente a zero: puntare tutto puo' far salire di
     // rango, e i ranghi pagano una ricompensa. Si verifica percio' che sia
     // stata scalata l'intera puntata, al netto di quanto il rango ha reso.
     const rewards = S.progression().level > 0 ? balance() : 0;
@@ -299,10 +299,10 @@ import { xpForWager } from '@/state/progression';
 
 describe('XP a giro', () => {
   it('cresce col logaritmo della puntata', () => {
-    expect(xpForWager(100)).toBe(18);
-    expect(xpForWager(1_000)).toBe(37);
-    expect(xpForWager(10_000)).toBe(63);
-    expect(xpForWager(100_000)).toBe(89);
+    expect(xpForWager(100)).toBe(2);
+    expect(xpForWager(1_000)).toBe(5);
+    expect(xpForWager(10_000)).toBe(8);
+    expect(xpForWager(100_000)).toBe(11);
   });
   it('una puntata 1000 volte piu grande vale meno di 6 volte tanto', () => {
     expect(xpForWager(100_000) / xpForWager(100)).toBeLessThan(6);

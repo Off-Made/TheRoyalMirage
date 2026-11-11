@@ -82,12 +82,13 @@ export function initialProgression(): ProgressionState {
 /**
  * XP di UN giro con puntata `bet` (centesimi). Cresce col logaritmo della
  * puntata: giocare conta piu' di quanto si punta.
- *   1 € → 18 · 10 € → 37 · 100 € → 63 · 1.000 € → 89
- * Una puntata mille volte piu' grande vale solo cinque volte tanto.
+ *   1 € → 2 · 10 € → 5 · 100 € → 8 · 1.000 € → 11
+ * (circa un ottavo della prima taratura: il rango massimo arrivava in 2-3 giorni)
+ * Una puntata mille volte piu' grande vale poco piu' di cinque volte tanto.
  */
 export function xpForWager(bet: number): number {
   const b = Math.max(0, Number.isFinite(bet) ? bet : 0);
-  return 10 + Math.floor(8 * Math.log2(1 + b / 100));
+  return Math.max(1, Math.round(1.25 + Math.log2(1 + b / 100)));
 }
 
 /**

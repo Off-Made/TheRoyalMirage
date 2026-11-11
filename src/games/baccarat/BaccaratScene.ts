@@ -127,9 +127,12 @@ export class BaccaratScene extends GameScene {
   private cardViews: CardView[] = [];
   private stacks = {} as Record<BetArea, ChipStack>;
   private glows = {} as Record<BetArea, Graphics>;
+  /** Importo totale posato su ogni area: la pila da sola si ricompone nei tagli e non dice "quanto". */
+  private amounts = {} as Record<BetArea, AmountPill>;
   private badges = {} as Record<Side, { node: Container; text: Text }>;
 
   private clearBtn: HTMLButtonElement | null = null;
+  private undoBtn: HTMLButtonElement | null = null;
   private rebetBtn: HTMLButtonElement | null = null;
 
   protected hudOptions(): SceneHudOptions {
@@ -167,7 +170,10 @@ export class BaccaratScene extends GameScene {
       const stack = new ChipStack(0.8);
       stack.position.set(r.x + r.w / 2, AREA_Y + AREA_H - 44);
       this.stacks[a] = stack;
-      areas.addChild(glow, hit, stack);
+      const pill = new AmountPill(r.x + r.w / 2 + 48, r.x + r.w - 10);
+      pill.y = AREA_Y + AREA_H - 50;
+      this.amounts[a] = pill;
+      areas.addChild(glow, hit, stack, pill);
     }
 
     const labels = new Container();
@@ -199,6 +205,7 @@ export class BaccaratScene extends GameScene {
       this.hud.topExtra.append(b);
       return b;
     };
+    this.undoBtn = mk(bs('undo'), () => this.undoChip());
     this.clearBtn = mk(bs('clear'), () => this.clearBets());
     this.rebetBtn = mk(bs('rebet'), () => this.rebet());
     this.refreshControls();
@@ -233,11 +240,15 @@ export class BaccaratScene extends GameScene {
     this.hud.setPrimaryEnabled(idle);
     this.hud.lockBet(!idle);
     if (this.clearBtn) this.clearBtn.disabled = !idle || this.board.empty;
+    if (this.undoBtn) this.undoBtn.disabled = !idle || !this.board.canUndo;
     if (this.rebetBtn) this.rebetBtn.disabled = !idle || !this.board.last || !this.board.empty;
   }
 
   private syncStacks(bets: Bets = this.board.bets): void {
-    for (const a of AREAS) this.stacks[a].set(bets[a], !settings().reducedMotion);
+    for (const a of AREAS) {
+      this.stacks[a].set(bets[a], !settings().reducedMotion);
+      this.amounts[a].set(bets[a]);
+    }
   }
 
   private showTableTotal(): void {
@@ -255,6 +266,15 @@ export class BaccaratScene extends GameScene {
       this.hud.message(bs('insufficient'), 'warn');
       return;
     }
+    sfxChip();
+    this.syncStacks();
+    this.showTableTotal();
+    this.refreshControls();
+  }
+
+  /** Toglie l'ultima fiche posata (non l'intera area). */
+  private undoChip(): void {
+    if (this.phase !== 'idle' || !this.board.undo()) return;
     sfxChip();
     this.syncStacks();
     this.showTableTotal();
@@ -504,7 +524,7 @@ export class BaccaratScene extends GameScene {
     return [
       { title: bs('tutBetT'), text: bs('tutBetX'), target: this.designTarget(236, AREA_Y, 1448, AREA_H) },
       { title: bs('tutCardsT'), text: bs('tutCardsX'), target: this.designTarget(236, LABEL_Y - 40, 1448, 330) },
-      { title: bs('tutRoadsT'), text: bs('tutRoadsX'), target: this.pixiTarget(() => this.roads) },
+      { title: bs('tutRoadsT'), text: bs('tutRoadsX'), target: this.designTarget(BEAD.x - 6, ROAD_Y - 6, BIG.x + BIG.cols * CELL - BEAD.x + 12, ROWS * CELL + 42) },
     ];
   }
 
@@ -547,6 +567,40 @@ export class BaccaratScene extends GameScene {
 }
 
 // ─────────────────────────────────────────────── AIUTI
+
+/**
+ * Targhetta con l'importo di un'area, a destra del cerchio delle fiche.
+ * Larga quanto il testo e tenuta dentro l'area (`maxRight`): il Pareggio e'
+ * stretto e una targhetta fissa ne uscirebbe.
+ */
+class AmountPill extends Container {
+  private readonly bg = new Graphics();
+  private readonly txt = makeText('', 'value', 18);
+
+  constructor(
+    private readonly left: number,
+    private readonly maxRight: number
+  ) {
+    super();
+    this.addChild(this.bg, this.txt);
+    this.visible = false;
+  }
+
+  set(amount: number): void {
+    this.visible = amount > 0;
+    if (!this.visible) return;
+    this.txt.text = formatMoney(amount);
+    const w = Math.ceil(this.txt.width) + 22;
+    const cx = Math.min(this.left + w / 2, this.maxRight - w / 2);
+    this.txt.x = cx;
+    this.bg
+      .clear()
+      .roundRect(cx - w / 2, -15, w, 30, 15)
+      .fill({ color: PALETTE.plum.abyss, alpha: 0.82 })
+      .roundRect(cx - w / 2, -15, w, 30, 15)
+      .stroke({ color: PALETTE.gold.light, width: 1.5, alpha: 0.9 });
+  }
+}
 
 function badge(tone: number): [Container, Text] {
   const c = new Container();

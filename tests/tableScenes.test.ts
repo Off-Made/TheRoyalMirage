@@ -126,6 +126,22 @@ describe('baccarat — tappeto delle puntate', () => {
     expect(b.total).toBe(100);
   });
 
+  it('le fiche sulla stessa area si sommano e Annulla toglie solo l ultima', () => {
+    const b = new BetBoard();
+    b.add('banker', 500, 10_000);
+    b.add('banker', 500, 10_000);
+    b.add('banker', 1_000, 10_000);
+    b.add('tie', 100, 10_000);
+    expect(b.bets.banker).toBe(2_000);
+    expect(b.undo()).toBe(true);
+    expect(b.bets).toEqual({ player: 0, banker: 2_000, tie: 0 });
+    expect(b.undo()).toBe(true);
+    expect(b.bets.banker).toBe(1_000);
+    b.clear();
+    expect(b.canUndo).toBe(false);
+    expect(b.undo()).toBe(false);
+  });
+
   it('commit svuota il tappeto e ricorda le puntate per Ripeti', () => {
     const b = new BetBoard();
     b.add('banker', 20, 500);

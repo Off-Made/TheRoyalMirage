@@ -27,7 +27,7 @@ import { gsap } from 'gsap';
 import { GameScene, type SceneHudOptions } from '@/games/common/GameScene';
 import { makeText } from '@/games/common/text';
 import { button, div, el } from '@/ui/dom/el';
-import { settings, store, wallet } from '@/state/store';
+import { actions, settings, store, wallet } from '@/state/store';
 import { formatMoney } from '@/state/wallet';
 import { PALETTE } from '@/art/palette';
 import { defaultRng } from '@/games/slots/engine/rng';
@@ -100,6 +100,8 @@ export class VideoPokerScene extends GameScene {
 
   private betOneBtn: HTMLButtonElement | null = null;
   private betMaxBtn: HTMLButtonElement | null = null;
+  /** Tieni/Scarta dal tavolo: lo stesso dato della voce nelle Impostazioni. */
+  private tapBtn: HTMLButtonElement | null = null;
   private readonly onKey = (e: KeyboardEvent) => this.handleKey(e);
   private unsubBet: (() => void) | null = null;
 
@@ -193,6 +195,9 @@ export class VideoPokerScene extends GameScene {
     };
     this.betOneBtn = mk(vs('betOne'), () => this.betOne());
     this.betMaxBtn = mk(vs('betMax'), () => this.betMax());
+    this.tapBtn = button('', { variant: 'secondary', size: 'sm', onClick: () => this.toggleTapMode() });
+    this.tapBtn.classList.add('go-hud__toggle');
+    this.hud.topExtra.append(this.tapBtn);
     window.addEventListener('keydown', this.onKey);
     // La denominazione si cambia dall'HUD: la puntata totale a schermo la segue.
     this.unsubBet = store.subscribe(() => this.refreshMeters());
@@ -233,8 +238,24 @@ export class VideoPokerScene extends GameScene {
     this.hud?.refresh();
   }
 
+  /**
+   * Solo a mano ferma: a carte servite il modo ha gia' deciso quali carte
+   * partono tenute (`holdAll` in modalita' Scarta), e cambiarlo li' le
+   * scambierebbe di significato sotto gli occhi del giocatore.
+   */
+  private toggleTapMode(): void {
+    if (this.phase !== 'idle') return;
+    actions.updateSettings({ vpTapMode: this.discardMode ? 'hold' : 'discard' });
+    this.hud.message(this.discardMode ? vs('tapNowDiscard') : vs('tapNowHold'));
+    this.refreshControls();
+  }
+
   private refreshControls(): void {
     const free = this.phase === 'idle';
+    if (this.tapBtn) {
+      this.tapBtn.textContent = this.discardMode ? vs('tapDiscard') : vs('tapHold');
+      this.tapBtn.disabled = !free;
+    }
     if (this.betOneBtn) this.betOneBtn.disabled = !free;
     if (this.betMaxBtn) this.betMaxBtn.disabled = !free;
     this.hud.lockBet(!free);

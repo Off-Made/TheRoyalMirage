@@ -105,6 +105,13 @@ export class CrashScene extends GameScene {
   private flightId = 0;
 
   private autoCents = 0;
+  /**
+   * Moltiplicatore incassato nel volo in corso (null = non ancora). Dopo
+   * l'incasso il volo PROSEGUE fino al punto di crash, come nelle app dei
+   * casino': il saldo e' gia' accreditato, resta la regia.
+   */
+  private cashedCents: number | null = null;
+  private cashedT = 0;
   private autoInput!: HTMLInputElement;
   private autoBtn!: HTMLButtonElement;
 
@@ -112,6 +119,9 @@ export class CrashScene extends GameScene {
 
   // Grafica
   private curve = new Graphics();
+  /** Segno verde sulla curva nel punto in cui si e' incassato. */
+  private cashMark = new Container();
+  private cashMarkText!: Text;
   private multText!: Text;
   private statusText!: Text;
   /**
@@ -174,6 +184,19 @@ export class CrashScene extends GameScene {
     grid.moveTo(PLOT.x0 - 18, PLOT.y0).lineTo(PLOT.x1 + 10, PLOT.y0);
     grid.stroke({ color: PALETTE.gold.core, alpha: 0.3, width: 2 });
     this.world.addChild(grid, this.curve);
+    {
+      const dot = new Graphics()
+        .circle(0, 0, 10)
+        .fill({ color: PALETTE.win.core })
+        .circle(0, 0, 10)
+        .stroke({ color: PALETTE.text.strong, width: 2.5 });
+      this.cashMarkText = makeText('', 'value', 24, { fill: PALETTE.win.light });
+      // Sotto il pallino: sopra passa la fiche, che appena dopo l'incasso lo coprirebbe.
+      this.cashMarkText.position.set(0, 30);
+      this.cashMark.addChild(dot, this.cashMarkText);
+      this.cashMark.visible = false;
+      this.world.addChild(this.cashMark);
+    }
 
     // Il moltiplicatore sta in ALTO a sinistra e non al centro: il centro e'
     // dove passa la curva, e un numero di 150px sotto alla fiche lo renderebbe
@@ -418,30 +441,38 @@ export class CrashScene extends GameScene {
 
   /** Incasso volontario (pulsante) o automatico, al moltiplicatore mostrato. */
   private cashOut(): void {
-    if (this.phase !== 'flying' || !this.roundActive) return;
+    if (this.phase !== 'flying' || !this.roundActive || this.cashedCents !== null) return;
     const cents = this.cents;
     const payout = Math.floor((this.bet * cents) / 100);
-    this.phase = 'over';
+    this.cashedCents = cents;
+    this.cashedT = this.flightT;
     this.finish(payout);
-    this.endFlight(cents, true);
+    this.cashMarkText.text = `${fmtMult(cents)}×`;
+    this.cashMark.visible = true;
+    this.statusText.text = cs('cashedShort', { m: fmtMult(cents) }).toUpperCase();
+    this.hud.setPrimary(cs('cashedShort', { m: fmtMult(cents) }), { enabled: false, variant: 'secondary' });
+    this.drawCurve(PALETTE.gold.core);
     sfxCashout();
     this.hud.message(cs('cashedOut', { m: fmtMult(cents), win: formatMoney(payout) }), 'win');
     bus.emit('game:event', { game: this.gameId, kind: 'crash:cashout' });
-    // La presentazione e' asincrona e non deve trattenere i controlli: la
-    // fase e' gia' 'over' e il conto alla rovescia parte comunque.
+    // La presentazione e' asincrona e non trattiene il volo, che prosegue
+    // fino al crash: e' li' che partono reveal del seme e conto alla rovescia.
     void this.presenter.present(payout, this.bet, { x: this.falcon.x, y: this.falcon.y });
   }
 
   /** Lo schianto: il volo ha raggiunto il punto deciso dal seme. */
   private boom(): void {
     const cents = this.crashCents;
+    const cashedAt = this.cashedCents;
     this.cents = cents;
     this.phase = 'over';
-    this.finish(0);
-    this.endFlight(cents, false);
+    // Incassato prima: il colpo e' gia' saldato, lo schianto e' solo regia.
+    if (cashedAt === null) this.finish(0);
+    this.endFlight(cents, cashedAt);
     sfxCrash();
-    this.shake(14, 0.5);
-    this.hud.message(cs('crashedLost', { m: fmtMult(cents) }), 'warn');
+    this.shake(cashedAt === null ? 14 : 6, 0.5);
+    if (cashedAt === null) this.hud.message(cs('crashedLost', { m: fmtMult(cents) }), 'warn');
+    else this.hud.message(cs('cashedThenCrash', { m: fmtMult(cashedAt), c: fmtMult(cents) }), 'win');
     this.spawnShards();
     bus.emit('game:event', { game: this.gameId, kind: 'crash:boom' });
   }
@@ -459,19 +490,22 @@ export class CrashScene extends GameScene {
   }
 
   /** Coda comune a incasso e schianto: grafica, reveal del seme, countdown. */
-  private endFlight(cents: number, cashed: boolean): void {
+  private endFlight(cents: number, cashedAt: number | null): void {
+    const cashed = cashedAt !== null;
     // Il tabellone registra dove il volo SI SAREBBE schiantato, non dove si
     // e' incassato: e' la storia del gioco, non del giocatore. Il valore e'
     // pubblico da qui in poi, perche' il seme viene rivelato subito sotto.
-    this.history.unshift({ crash: this.crashCents, cashedAt: cashed ? cents : null });
+    this.history.unshift({ crash: this.crashCents, cashedAt });
     if (this.history.length > HISTORY_MAX) this.history.length = HISTORY_MAX;
     this.renderHistory();
     this.multText.text = `${fmtMult(cents)}×`;
-    this.multText.style.fill = cashed ? PALETTE.win.light : PALETTE.red.light;
-    this.statusText.text = (cashed ? cs('cashedShort', { m: fmtMult(cents) }) : cs('crashed', { m: fmtMult(cents) })).toUpperCase();
-    this.drawCurve(cashed ? PALETTE.win.core : PALETTE.red.core);
+    // Il volo finisce sempre con lo schianto: il numero grande e' quello del
+    // crash; se si era incassato, la riga sotto lo ricorda in verde.
+    this.multText.style.fill = PALETTE.red.light;
+    this.statusText.text = (cashed ? cs('cashedShort', { m: fmtMult(cashedAt) }) : cs('crashed', { m: fmtMult(cents) })).toUpperCase();
+    this.drawCurve(PALETTE.red.core);
     this.showCrashBadge(cashed);
-    this.falcon.visible = cashed;
+    this.falcon.visible = false;
     this.tipFlare.alpha = 0;
     this.tipGlow.alpha = 0;
     this.hud.setPrimary(cs('waiting'), { enabled: false, variant: 'secondary' });
@@ -563,12 +597,12 @@ export class CrashScene extends GameScene {
     this.cents = cents;
     this.pushTrail();
     this.multText.text = `${fmtMult(cents)}×`;
-    this.hud.setPrimary(cs('cashOut', { m: fmtMult(cents) }), { enabled: true, variant: 'danger' });
+    if (this.cashedCents === null) this.hud.setPrimary(cs('cashOut', { m: fmtMult(cents) }), { enabled: true, variant: 'danger' });
     this.drawCurve(PALETTE.gold.core);
 
     // Auto-incasso: la soglia va controllata DOPO lo schianto, mai prima —
     // un obiettivo oltre il punto di crash non deve poter pagare.
-    if (this.autoCents > 0 && cents >= this.autoCents) {
+    if (this.cashedCents === null && this.autoCents > 0 && cents >= this.autoCents) {
       this.cashOut();
       return;
     }
@@ -631,6 +665,8 @@ export class CrashScene extends GameScene {
       for (const [x, y] of pts.slice(1)) g.lineTo(x, y);
       g.stroke({ color: tint, alpha: a, width: w, cap: 'round', join: 'round' });
     }
+
+    if (this.cashedCents !== null) this.cashMark.position.set(px(this.cashedT), py(this.cashedCents));
 
     const prev = pts[Math.max(0, pts.length - 6)]!;
     this.placeTip(last[0], last[1], Math.atan2(last[1] - prev[1], last[0] - prev[0]));
@@ -723,6 +759,9 @@ export class CrashScene extends GameScene {
   }
 
   private resetFlightVisuals(): void {
+    this.cashedCents = null;
+    this.cashedT = 0;
+    this.cashMark.visible = false;
     this.trail = [[0, 100]];
     this.cents = 100;
     this.flightT = 0;

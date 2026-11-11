@@ -9,7 +9,7 @@
 
 import { div, el, fieldRow, toggle, slider, segmented, button } from './el';
 import { showModal, confirmModal, closeModal } from './Modal';
-import { settings, actions } from '@/state/store';
+import { settings, actions, store } from '@/state/store';
 import type { Language, Quality } from '@/state/settings';
 import { setLanguage, applyTranslations } from '@/i18n';
 import { game } from '@/core/App';
@@ -153,6 +153,23 @@ export function openSettings(onLanguageChanged?: () => void): void {
       )
     )
   );
+
+  // In fondo, e SOLO in modalita' Libera: serve per le presentazioni dal
+  // vivo e non deve comparire a chi gioca in Carriera.
+  if (store.getState().mode === 'freeplay') {
+    body.append(
+      group(
+        'settings.demo',
+        fieldRow('settings.demoBigWins', toggle(s.demoBigWins, (v) => actions.updateSettings({ demoBigWins: v }))),
+        fieldRow('settings.demoFreeSpins', toggle(s.demoFreeSpins, (v) => actions.updateSettings({ demoFreeSpins: v }))),
+        fieldRow(
+          'settings.demoHoldWin',
+          toggle(s.demoHoldWin, (v) => actions.updateSettings({ demoHoldWin: v })),
+          'settings.demoHint'
+        )
+      )
+    );
+  }
 
   showModal({ titleKey: 'settings.title', body, width: 760 });
 }

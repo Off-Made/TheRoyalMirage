@@ -56,11 +56,12 @@ export type Payline = readonly number[];
 
 /** Come si contano le combinazioni vincenti. */
 export type EvalMode =
-  /** Linee fisse, da sinistra a destra, a partire dal rullo 1. */
+  /** Linee fisse: 3+ simboli uguali su rulli adiacenti, da qualunque rullo. */
   | 'lines'
   /**
    * "Ways": conta le combinazioni come prodotto delle occorrenze per rullo
-   * (una 5x4 da' 4^5 = 1024 modi). Paga una volta per simbolo, non per linea.
+   * (una 5x4 da' 4^5 = 1024 modi) su 3+ rulli adiacenti, da qualunque rullo.
+   * Paga una volta per simbolo, non per linea.
    */
   | 'ways';
 
@@ -151,6 +152,8 @@ export interface WinLine {
   symbol: SymId;
   /** Quanti simboli hanno formato la combinazione. */
   count: number;
+  /** Primo rullo della combinazione (0-based; linee e ways). */
+  startReel?: number;
   /** Indice della linea (solo `kind: 'line'`). */
   lineIndex?: number;
   /** Celle coinvolte, come coppie [rullo, riga]: la vista le illumina. */

@@ -35,15 +35,15 @@ import { PALETTE } from '@/art/palette';
 export const SF_SYMBOLS: readonly SymbolDef[] = [
   { id: 'W', label: 'Corona', glyph: '👑', tint: PALETTE.gold.core, wild: true },
   { id: 'C', label: 'Moneta d’Oro', glyph: '🪙', tint: PALETTE.gold.light },
-  { id: 'X', label: 'Sacco d’Oro', glyph: '💰', tint: PALETTE.gold.light, pays: { 3: 25, 4: 70, 5: 175, 6: 500 } },
-  { id: 'R', label: 'Diamante', glyph: '💎', tint: PALETTE.red.light, pays: { 3: 18, 4: 45, 5: 100, 6: 350 } },
-  { id: 'E', label: 'Anello', glyph: '💍', tint: PALETTE.win.light, pays: { 3: 14, 4: 35, 5: 85, 6: 250 } },
-  { id: 'Y', label: 'Dadi', glyph: '🎲', tint: PALETTE.accent.sapphire.light, pays: { 3: 10, 4: 25, 5: 70, 6: 175 } },
-  { id: 'A', label: 'Asso', glyph: 'A', tint: PALETTE.red.light, pays: { 3: 5, 4: 14, 5: 35, 6: 85 } },
-  { id: 'K', label: 'Re', glyph: 'K', tint: PALETTE.win.light, pays: { 3: 5, 4: 14, 5: 30, 6: 70 } },
-  { id: 'Q', label: 'Regina', glyph: 'Q', tint: PALETTE.accent.violet.light, pays: { 3: 3, 4: 10, 5: 25, 6: 50 } },
-  { id: 'J', label: 'Fante', glyph: 'J', tint: PALETTE.accent.sapphire.light, pays: { 3: 3, 4: 8, 5: 20, 6: 40 } },
-  { id: 'T', label: 'Dieci', glyph: '10', tint: PALETTE.neon.halo, pays: { 3: 2, 4: 6, 5: 16, 6: 35 } },
+  { id: 'X', label: 'Sacco d’Oro', glyph: '💰', tint: PALETTE.gold.light, pays: { 3: 6.35, 4: 26.75, 5: 102.8, 6: 381.8 } },
+  { id: 'R', label: 'Diamante', glyph: '💎', tint: PALETTE.red.light, pays: { 3: 4.6, 4: 17.2, 5: 58.75, 6: 267.25 } },
+  { id: 'E', label: 'Anello', glyph: '💍', tint: PALETTE.win.light, pays: { 3: 3.55, 4: 13.35, 5: 49.95, 6: 190.9 } },
+  { id: 'Y', label: 'Dadi', glyph: '🎲', tint: PALETTE.accent.sapphire.light, pays: { 3: 2.55, 4: 9.55, 5: 41.1, 6: 133.65 } },
+  { id: 'A', label: 'Asso', glyph: 'A', tint: PALETTE.red.light, pays: { 3: 1.25, 4: 5.35, 5: 20.55, 6: 64.9 } },
+  { id: 'K', label: 'Re', glyph: 'K', tint: PALETTE.win.light, pays: { 3: 1.25, 4: 5.35, 5: 17.6, 6: 53.45 } },
+  { id: 'Q', label: 'Regina', glyph: 'Q', tint: PALETTE.accent.violet.light, pays: { 3: 0.8, 4: 3.8, 5: 14.7, 6: 38.2 } },
+  { id: 'J', label: 'Fante', glyph: 'J', tint: PALETTE.accent.sapphire.light, pays: { 3: 0.8, 4: 3.05, 5: 11.75, 6: 30.55 } },
+  { id: 'T', label: 'Dieci', glyph: '10', tint: PALETTE.neon.halo, pays: { 3: 0.5, 4: 2.3, 5: 9.4, 6: 26.75 } },
 ];
 
 /** I quattro jackpot, dal minore al maggiore. L'ultimo (GRAND) e' quello a griglia piena. */
@@ -73,7 +73,7 @@ export const SF_COUNTS: readonly StripCounts[] = [
 ];
 
 /** Pile: abbassano la frequenza di vincita e creano rulli "pieni". */
-export const SF_STACK: Readonly<Record<string, number>> = { X: 2, R: 2, E: 2, Y: 2, A: 2, K: 2, Q: 2, J: 2, T: 2 };
+export const SF_STACK: Readonly<Record<string, number>> = { X: 2, R: 2, E: 2, Y: 2, A: 2, K: 3, Q: 3, J: 3, T: 3 };
 
 export interface SheikhsFortuneTuning {
   counts?: readonly StripCounts[];
