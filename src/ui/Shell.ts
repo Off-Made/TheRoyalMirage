@@ -17,8 +17,9 @@ import { Lobby } from './dom/Lobby';
 import { openSettings } from './dom/SettingsModal';
 import { openModes } from './dom/ModesModal';
 import { openProfile } from './dom/ProfileModal';
-import { showModal, closeModal, isModalOpen } from './dom/Modal';
+import { showModal, closeModal, isModalOpen, dismissModal } from './dom/Modal';
 import { installToasts, toast } from './dom/Toasts';
+import { isTutorialOpen, closeTutorial } from './dom/Tutorial';
 import { div, el, button } from './dom/el';
 import { applyTranslations, t, num, onLanguageChange } from '@/i18n';
 import type { TranslationKey } from '@/i18n';
@@ -38,6 +39,13 @@ import { iconUrl, preloadImages } from '@/art/images';
 import { COVER_ICONS } from './dom/GameCover';
 
 type View = 'menu' | 'lobby' | 'game';
+
+/** Voce della cronologia del browser: la schermata e la sua posizione. */
+interface HistoryEntry {
+  rm: View;
+  i: number;
+  g: GameId | null;
+}
 
 /**
  * Raggiungere i ranghi 3 e 7 emette `vip:levelup` E sblocca nello stesso
@@ -66,8 +74,10 @@ class ShellImpl {
    * funzionano anche in verticale).
    */
   private set view(v: View) {
+    const changed = v !== this._view;
     this._view = v;
     document.documentElement.classList.toggle('in-game', v === 'game');
+    if (changed && !this.fromHistory) this.recordView(v);
   }
   /** Gioco attivo, per sapere a cosa tornare uscendo da una modale. */
   private activeGame: GameId | null = null;
@@ -111,6 +121,7 @@ class ShellImpl {
 
     this.wireEvents();
     this.wireKeyboard();
+    this.wireHistory();
 
     installAchievementTracker({
       ctx: () => ({ wallet: wallet(), progression: progression() }),
@@ -219,8 +230,8 @@ class ShellImpl {
       return;
     }
 
-    this.view = 'game';
     this.activeGame = id;
+    this.view = 'game';
     this.menu.hide();
     this.lobby.hide();
     audio.setMood(info.mood);
@@ -233,8 +244,8 @@ class ShellImpl {
   async devEnter(id: GameId): Promise<void> {
     const info = gameById(id);
     if (!info.scene) return;
-    this.view = 'game';
     this.activeGame = id;
+    this.view = 'game';
     this.menu.hide();
     this.lobby.hide();
     audio.setMood(info.mood);
@@ -243,14 +254,14 @@ class ShellImpl {
   }
 
   /** Uscita da un gioco verso la sala. Ripristina la scena atmosferica. */
-  async exitGame(): Promise<void> {
+  async exitGame(to: 'menu' | 'lobby' = 'lobby'): Promise<void> {
     if (this.view !== 'game' || this.leaving) return;
     this.leaving = true;
     try {
       if (!(await scenes.canLeave())) return;
       this.activeGame = null;
       await scenes.goTo(() => new AtmosphereScene(), 'chip');
-      this.applyView('lobby');
+      this.applyView(to);
     } finally {
       this.leaving = false;
     }
@@ -454,6 +465,108 @@ class ShellImpl {
           break;
       }
     });
+  }
+
+  // ═══════════════════════════════════════════════ CRONOLOGIA DEL BROWSER
+
+  /**
+   * Il tasto Indietro del browser riporta alla schermata precedente invece
+   * di chiudere il sito.
+   *
+   * Ogni schermata (menu, sala, gioco) e' una voce della cronologia. Le voci
+   * rispecchiano il percorso: tornare indietro dentro il sito (pulsante,
+   * Esc) arretra anche nella cronologia invece di aggiungere voci, e un
+   * gioco da cui si e' usciti viene sostituito dalla schermata di arrivo.
+   * Cosi' Indietro non ripercorre all'infinito menu → sala → menu.
+   */
+  private histViews: View[] = [];
+  private histIndex = 0;
+  /** Vero mentre si applica una voce della cronologia: non va registrata. */
+  private fromHistory = false;
+  /** `popstate` provocati da noi con `history.back()`, da non rieseguire. */
+  private skipPops = 0;
+
+  private wireHistory(): void {
+    this.histViews = [this.view];
+    this.histIndex = 0;
+    history.replaceState(this.entry(this.view), '');
+    window.addEventListener('popstate', (e) => void this.onPopState(e.state));
+  }
+
+  private entry(v: View): HistoryEntry {
+    return { rm: v, i: this.histIndex, g: v === 'game' ? this.activeGame : null };
+  }
+
+  private pushEntry(v: View): void {
+    this.histIndex++;
+    this.histViews.length = this.histIndex;
+    this.histViews.push(v);
+    history.pushState(this.entry(v), '');
+  }
+
+  /** Il sito ha cambiato schermata da solo: la cronologia lo segue. */
+  private recordView(v: View): void {
+    if (this.histIndex > 0 && this.histViews[this.histIndex - 1] === v) {
+      this.histIndex--;
+      this.skipPops++;
+      history.back();
+      return;
+    }
+    if (this.histViews[this.histIndex] === 'game') {
+      this.histViews[this.histIndex] = v;
+      history.replaceState(this.entry(v), '');
+      return;
+    }
+    this.pushEntry(v);
+  }
+
+  /** Indietro/Avanti del browser: si va alla schermata della voce raggiunta. */
+  private async onPopState(state: unknown): Promise<void> {
+    if (this.skipPops > 0) {
+      this.skipPops--;
+      return;
+    }
+    const s = state as HistoryEntry | null;
+    if (!s || typeof s.rm !== 'string') return;
+    const from = this.histIndex;
+    this.histIndex = s.i;
+    this.histViews[s.i] = s.rm;
+
+    // Si resta sulla schermata: si torna alla voce da cui si veniva, che
+    // esiste ancora. Aggiungerne una nuova senza un click la farebbe
+    // ignorare da Chrome al prossimo Indietro.
+    const stay = () => {
+      if (from === s.i) return;
+      this.histIndex = from;
+      this.skipPops++;
+      history.go(from - s.i);
+    };
+
+    // Con una modale aperta, Indietro la chiude (come Esc) e la schermata
+    // resta.
+    if (isModalOpen()) {
+      dismissModal();
+      stay();
+      return;
+    }
+    // Il tutorial invece non trattiene: si chiude e si lascia il gioco.
+    if (isTutorialOpen()) closeTutorial();
+
+    this.fromHistory = true;
+    try {
+      if (s.rm === 'game') {
+        if (this.view !== 'game' && s.g) await this.enterGame(s.g);
+      } else if (this.view === 'game') {
+        await this.exitGame(s.rm);
+      } else {
+        await this.navigate(s.rm);
+      }
+    } finally {
+      this.fromHistory = false;
+    }
+    // Uscita rifiutata (mano in corso) o schermata bloccata: si resta dove
+    // si e', e la cronologia torna a dirlo.
+    if (this.view !== s.rm) stay();
   }
 
   // ═══════════════════════════════════════════════ DIAGNOSTICA

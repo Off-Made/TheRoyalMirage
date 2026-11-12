@@ -31,7 +31,7 @@ export interface ModalOptions {
 const FOCUSABLE =
   'button:not(:disabled), [href], input:not(:disabled), select, textarea, [tabindex]:not([tabindex="-1"])';
 
-let openModal: { destroy: () => void } | null = null;
+let openModal: { destroy: () => void; dismissable: boolean } | null = null;
 
 export function isModalOpen(): boolean {
   return openModal !== null;
@@ -39,6 +39,17 @@ export function isModalOpen(): boolean {
 
 export function closeModal(): void {
   openModal?.destroy();
+}
+
+/**
+ * Chiude la modale aperta come farebbe Esc: solo se e' chiudibile. Le
+ * conferme restano aperte, perche' chiedono una scelta esplicita.
+ * Restituisce `true` se una modale e' stata chiusa.
+ */
+export function dismissModal(): boolean {
+  if (!openModal?.dismissable) return false;
+  openModal.destroy();
+  return true;
 }
 
 export function showModal(opts: ModalOptions): { close: () => void } {
@@ -133,7 +144,7 @@ export function showModal(opts: ModalOptions): { close: () => void } {
   const firstFocusable = panel.querySelector<HTMLElement>(FOCUSABLE);
   (firstFocusable ?? panel).focus?.();
 
-  openModal = { destroy };
+  openModal = { destroy, dismissable: opts.dismissable ?? true };
   return { close: destroy };
 }
 

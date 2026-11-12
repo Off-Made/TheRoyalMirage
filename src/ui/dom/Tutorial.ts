@@ -56,6 +56,11 @@ export function isTutorialOpen(): boolean {
   return active !== null;
 }
 
+/** Chiude il tutorial aperto, come Esc o "Chiudi tutorial". */
+export function closeTutorial(): void {
+  active?.close();
+}
+
 function svg<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
   const n = document.createElementNS(SVG_NS, tag);
   for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
