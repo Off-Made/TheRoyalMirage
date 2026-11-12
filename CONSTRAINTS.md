@@ -22,3 +22,13 @@ una sola volta. Sotto i 10 centesimi l'arrotondamento azzererebbe una parte
 significativa delle vincite piccole, e il ritorno teorico mostrato in sala
 smetterebbe di essere vero. Il minimo protegge l'RTP dichiarato; non limita il
 giocatore verso l'alto.
+
+**Vincita minima 0,01 €.** Lo 0,10 € basta per Lucky Sevens (20 linee), ma non
+per le slot a combinazioni (Hollywood Nights, Diamond Royale), che dividono la
+puntata per 50: a 0,10 € la puntata base vale 0,2 centesimi e i premi minori
+(3 Dieci, 3 J/Q, 3 K/A) valgono frazioni di centesimo. Per questo una giocata
+vincente paga sempre almeno 0,01 € (`payoutCents` in `slots/engine/spin.ts`);
+oltre il mezzo centesimo l'arrotondamento resta quello di sempre. A puntate
+molto basse simboli diversi possono quindi pagare lo stesso centesimo: e' il
+limite dei centesimi interi, scelto dal committente al posto di una puntata
+minima piu' alta per le due slot. Guardiano: `tests/minWin.test.ts`.

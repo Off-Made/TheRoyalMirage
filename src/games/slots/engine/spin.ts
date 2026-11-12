@@ -150,7 +150,24 @@ export function playRound(m: MachineDef, bet: number, rng: Rng): RoundOutcome {
   }
 
   const raw = base.payout + free.reduce((s, f) => s + f.payout, 0) + (holdAndWin?.payout ?? 0);
-  return { base, free, holdAndWin, totalPayout: Math.round(raw), bet };
+  return { base, free, holdAndWin, totalPayout: payoutCents(raw), bet };
+}
+
+/**
+ * Da vincita esatta (frazioni di centesimo) a centesimi da accreditare.
+ *
+ * Arrotonda al centesimo piu' vicino, come sempre, con UNA eccezione: una
+ * vincita vera non vale mai 0,00 €. Con le puntate piu' basse la puntata
+ * base delle slot a combinazioni scende sotto il centesimo (0,10 € ÷ 50 =
+ * 0,2 centesimi) e i premi minori finivano arrotondati a zero: il giocatore
+ * vedeva una combinazione illuminata e riceveva 0,00 €.
+ *
+ * Tutte le altre vincite restano identiche. L'effetto sull'RTP esiste solo
+ * sotto i ~0,50 € di puntata ed e' di qualche decimo di punto a 0,10 €.
+ */
+export function payoutCents(raw: number): number {
+  if (!(raw > 0)) return 0;
+  return Math.max(1, Math.round(raw));
 }
 
 /** Payout esatto (non arrotondato), per le simulazioni RTP. */

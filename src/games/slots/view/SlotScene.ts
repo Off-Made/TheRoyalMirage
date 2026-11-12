@@ -35,7 +35,7 @@ import { demoCriterion, demoRound } from '../demo';
 import { formatMoney } from '@/state/wallet';
 import { sfxReelStop, sfxSpinStart, sfxWin, sfxCoin, sfxTick, sfxLose, sfxConfirm, sfxJackpot } from '@/audio/synth';
 import { defaultRng, type Rng } from '../engine/rng';
-import { playRound } from '../engine/spin';
+import { playRound, payoutCents } from '../engine/spin';
 import { symbolIndex } from '../engine/evaluate';
 import type { JackpotDef, MachineDef, RoundOutcome, SpinOutcome, SymId, WinLine } from '../engine/types';
 import { ReelView } from './ReelView';
@@ -571,7 +571,7 @@ export class SlotScene extends GameScene {
 
   /** Descrizione di una combinazione per l'HUD. */
   private winText(w: WinLine): string {
-    const coins = formatMoney(w.payout);
+    const coins = formatMoney(payoutCents(w.payout));
     if (w.kind === 'scatter') return ss('scatterWin', { n: w.count, coins });
     const label = symbolIndex(this.m).byId.get(w.symbol)?.label ?? w.symbol;
     if (w.kind === 'line') return ss('lineWin', { line: (w.lineIndex ?? 0) + 1, n: w.count, sym: label, coins });
@@ -696,17 +696,17 @@ export class SlotScene extends GameScene {
     if (wins.length === 0) return;
     this.phase = 'presenting';
     this.drawWins(wins, true);
-    this.hud.setWin(Math.round(cumulative));
+    this.hud.setWin(payoutCents(cumulative));
     // Sempre una spiegazione: la combinazione se e' una sola, il riepilogo se
     // sono piu' d'una (poi scorrono una alla volta, vedi `tick`).
     this.hud.message(
       wins.length === 1
         ? this.winText(wins[0]!)
-        : ss('multiWin', { n: wins.length, coins: formatMoney(Math.round(o.payout)) }),
+        : ss('multiWin', { n: wins.length, coins: formatMoney(payoutCents(o.payout)) }),
       'win'
     );
     const bounds = this.winCentroid(wins);
-    await this.presenter.present(Math.round(o.payout), bet, { ...bounds, small: more });
+    await this.presenter.present(payoutCents(o.payout), bet, { ...bounds, small: more });
     this.idleWins = wins;
     this.idleIndex = 0;
     this.idleTimer = 0;
@@ -749,7 +749,7 @@ export class SlotScene extends GameScene {
       if (this.disposed) return paid;
       freeWin += f.payout;
       paid += f.payout;
-      this.fsWin.text = formatMoney(freeWin);
+      this.fsWin.text = formatMoney(payoutCents(freeWin));
       if (f.payout > 0) await this.showWins(f, bet, paid, false);
       if (f.freeSpinsAwarded > 0) {
         total += f.freeSpinsAwarded;
@@ -766,7 +766,7 @@ export class SlotScene extends GameScene {
     this.hud.message('');
     if (freeWin > 0) {
       this.phase = 'presenting';
-      await this.presenter.present(Math.round(freeWin), bet, { forceBig: true, title: ss('freeTotal').toUpperCase() });
+      await this.presenter.present(payoutCents(freeWin), bet, { forceBig: true, title: ss('freeTotal').toUpperCase() });
     }
     return paid;
   }
