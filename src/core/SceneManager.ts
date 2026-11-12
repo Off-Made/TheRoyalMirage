@@ -85,7 +85,12 @@ class SceneManagerImpl {
    * Ignora chiamate concorrenti: due transizioni sovrapposte lascerebbero
    * scene orfane nello stage.
    */
-  async goTo(factory: SceneFactory, kind: TransitionKind = 'fade'): Promise<void> {
+  /**
+   * `onCovered`, se c'e', viene chiamato a scena nuova pronta e schermo
+   * ancora coperto, appena prima che il velo si riapra: e' il momento di
+   * rimettere le schermate DOM che devono comparire insieme alla scena.
+   */
+  async goTo(factory: SceneFactory, kind: TransitionKind = 'fade', onCovered?: () => void): Promise<void> {
     if (this.busy) return;
     this.busy = true;
 
@@ -105,6 +110,7 @@ class SceneManagerImpl {
         } finally {
           this.paused = false;
         }
+        onCovered?.();
         await t.reveal();
         t.view.destroy({ children: true });
       }

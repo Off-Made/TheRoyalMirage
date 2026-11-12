@@ -16,7 +16,9 @@
   overflow-x: hidden;
   overflow-y: auto;
   background-color: var(--bg);
-  transition: opacity var(--t-slow) var(--ease-out), visibility var(--t-slow);
+  /* Nessuna dissolvenza propria: lo scambio fra home e sala avviene sotto
+     `.go-veil`. Incrociare l'opacita' di due schermate a tutta pagina
+     costava fino a un secondo di blocco su GPU integrate. */
   scrollbar-width: thin;
   scrollbar-color: var(--plum-line) transparent;
 }
@@ -33,6 +35,67 @@
 }
 .go-screen.is-hidden {
   display: flex;
+}
+/* Solo entrando in un gioco e uscendone: la schermata svanisce (o torna)
+   sopra il velluto rosso della fiche, transizione `chip`. La durata e'
+   quella di sempre: piu' corta, la sala sparirebbe prima che il gioco sia
+   pronto e la sua costruzione si vedrebbe come uno scatto. */
+.go-screen.is-fading {
+  transition: opacity var(--t-slow) var(--ease-out), visibility var(--t-slow);
+}
+
+/* ══════════════════════════════════════════════════════ VELO DEI CAMBI DI PAGINA
+ * Un solo livello a tinta unita sopra le schermate (PageVeil.ts): animarne
+ * l'opacita' e' quasi gratis. Durate allineate a COVER_MS / REVEAL_MS.
+ * Sotto modali (500), tutorial (600) e toast (800): restano leggibili.
+ */
+.go-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 220ms var(--ease-in-out), visibility 0s linear 220ms;
+}
+.go-veil.is-on {
+  opacity: 1;
+  visibility: visible;
+  /* Blocca i click durante il cambio: nessun doppio ingresso a meta' strada. */
+  pointer-events: auto;
+  transition: opacity 180ms var(--ease-in-out), visibility 0s;
+}
+
+/* La moneta compare solo se lo scambio dura: negli scambi rapidi il velo si
+   riapre prima che faccia in tempo a vedersi. */
+.go-veil__coin {
+  width: 96px;
+  height: 96px;
+  opacity: 0;
+}
+.go-veil.is-on .go-veil__coin {
+  animation:
+    go-veil-coin-in 200ms var(--ease-out) 320ms forwards,
+    go-veil-coin-flip 900ms linear 320ms infinite;
+}
+.go-veil.is-on.is-still .go-veil__coin {
+  animation: go-veil-coin-in 200ms var(--ease-out) 320ms forwards;
+}
+@keyframes go-veil-coin-in {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes go-veil-coin-flip {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
 }
 
 /* ══════════════════════════════════════════════════════ BARRA SUPERIORE */

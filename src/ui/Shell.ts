@@ -20,6 +20,7 @@ import { openProfile } from './dom/ProfileModal';
 import { showModal, closeModal, isModalOpen, dismissModal } from './dom/Modal';
 import { installToasts, toast } from './dom/Toasts';
 import { isTutorialOpen, closeTutorial } from './dom/Tutorial';
+import { coverPage, revealPage } from './dom/PageVeil';
 import { div, el, button } from './dom/el';
 import { applyTranslations, t, num, onLanguageChange } from '@/i18n';
 import type { TranslationKey } from '@/i18n';
@@ -138,28 +139,28 @@ class ShellImpl {
   // ═══════════════════════════════════════════════ NAVIGAZIONE
 
   /**
-   * Passaggio fra menu e lobby, con la stessa fiche dei giochi.
+   * Passaggio fra menu e lobby.
    *
    * Menu e lobby sono due overlay DOM sopra la STESSA scena Pixi: non c'e'
-   * nessuno scambio di scena da fare, cambia solo l'AMBIENTE dello sfondo.
-   * Per questo il tempismo sta qui e non nel SceneManager: lo schermo si
-   * copre, e SOLO da coperto si cambiano ambiente e overlay — i ~20 ms di
-   * cottura delle texture nuove restano invisibili.
+   * nessuno scambio di scena da fare. Il velo DOM (PageVeil) copre, le
+   * schermate si scambiano di colpo sotto di lui, e il velo si riapre: cosi'
+   * il primo disegno della schermata nuova non si vede mai a meta'.
    */
   private async navigate(to: 'menu' | 'lobby'): Promise<void> {
     if (this.navigating || this.view === to) return;
     this.navigating = true;
-    const veil = scenes.mountTransition('chip');
     try {
-      await veil.cover();
+      await coverPage();
       // Mentre lo schermo si copriva si e' entrati in un gioco: la vista di
       // destinazione non esiste piu'. Applicarla ora rimetterebbe la lobby
-      // (e la sua musica) sopra la partita.
+      // (e la sua musica) sopra la partita; il velo lo riapre l'ingresso.
       if (this.view === 'game') return;
-      this.applyView(to);
-      await veil.reveal();
+      try {
+        this.applyView(to);
+      } finally {
+        await revealPage();
+      }
     } finally {
-      scenes.unmountTransition(veil);
       this.navigating = false;
     }
   }
@@ -178,8 +179,13 @@ class ShellImpl {
     );
   }
 
-  /** Lo scambio degli overlay DOM e del mood: niente animazioni. */
-  private applyView(to: 'menu' | 'lobby'): void {
+  /**
+   * Lo scambio degli overlay DOM e del mood. Di norma istantaneo (avviene
+   * sotto un velo); con `fade` la schermata compare in dissolvenza, per
+   * l'uscita da un tavolo mentre si apre il velo della fiche.
+   */
+  private applyView(to: 'menu' | 'lobby', fade = false): void {
+    if (fade) this.fadeScreens();
     this.view = to;
     if (to === 'menu') {
       this.activeGame = null;
@@ -230,14 +236,41 @@ class ShellImpl {
       return;
     }
 
-    this.activeGame = id;
-    this.view = 'game';
-    this.menu.hide();
-    this.lobby.hide();
-    audio.setMood(info.mood);
+    if (this.entering) return;
+    this.entering = true;
+    try {
+      this.activeGame = id;
+      this.view = 'game';
+      // L'ingresso resta quello della fiche: home o sala svaniscono (una sola
+      // schermata in dissolvenza, non due incrociate) mentre sotto sale il
+      // velluto rosso con la fiche che gira.
+      this.fadeScreens();
+      this.menu.hide();
+      this.lobby.hide();
+      audio.setMood(info.mood);
 
-    const factory = info.scene;
-    await scenes.goTo(() => factory(), 'chip');
+      const factory = info.scene;
+      await scenes.goTo(() => factory(), 'chip');
+    } finally {
+      this.entering = false;
+    }
+  }
+
+  /** Vero durante l'ingresso in un gioco: evita due ingressi sovrapposti. */
+  private entering = false;
+
+  /**
+   * Il prossimo nascondi/mostra di home e sala avviene con una breve
+   * dissolvenza (`.is-fading`): serve solo entrando in un tavolo e uscendone,
+   * insieme al velo della fiche. Gli scambi fra home e sala restano
+   * istantanei sotto il velo DOM.
+   */
+  private fadeScreens(): void {
+    const roots = [this.menu.root, this.lobby.root];
+    for (const r of roots) r.classList.add('is-fading');
+    window.setTimeout(() => {
+      for (const r of roots) r.classList.remove('is-fading');
+    }, 400);
   }
 
   /** Solo sviluppo: entra in un gioco saltando i controlli di rango. */
@@ -259,9 +292,15 @@ class ShellImpl {
     this.leaving = true;
     try {
       if (!(await scenes.canLeave())) return;
+      // Uscita con la fiche, come l'ingresso. La sala torna A VELO CHIUSO e
+      // svanisce dentro mentre il velluto rosso si apre: prima compariva
+      // dopo, in dissolvenza sopra una scena appena ricostruita, ed era li'
+      // lo scatto che si vedeva appena usciti.
       this.activeGame = null;
-      await scenes.goTo(() => new AtmosphereScene(), 'chip');
-      this.applyView(to);
+      await scenes.goTo(() => new AtmosphereScene(), 'chip', () => this.applyView(to, true));
+      // Scambio rifiutato (un'altra transizione in corso): la vista va
+      // comunque rimessa, come prima.
+      if (this.view === 'game') this.applyView(to);
     } finally {
       this.leaving = false;
     }
