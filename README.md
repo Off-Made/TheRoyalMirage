@@ -1,2 +1,136 @@
-# TheRoyalMirage
-Casinò Las Vegas style
+# The Royal Mirage
+
+Un casinò in stile Las Vegas che si gioca nel browser, **solo con euro virtuali**.
+Nessun pagamento, nessun conto, nessuna vincita reale: è un gioco di simulazione.
+
+Il sito ricrea l'atmosfera di una sala sulla Strip di notte (velluto prugna, oro,
+insegne luminose) e offre otto giochi da casinò con regole e probabilità vere,
+dichiarate in sala.
+
+---
+
+## Cosa si può fare
+
+### I giochi
+
+| Gioco | Tipo | Ritorno teorico (RTP) |
+|---|---|---|
+| **Lucky Sevens** | Slot · 5 rulli, 20 linee, Wild espansivo | 96,2 % |
+| **Hollywood Nights** | Slot · 1024 modi, giri gratis con moltiplicatore | 96,0 % |
+| **Diamond Royale** | Slot · Hold & Win con 4 jackpot | 95,8 % |
+| **Blackjack** | Carte · scarpa da 6 mazzi, il banco sta su 17 | 99,5 % |
+| **Roulette** | Ruota · europea, zero singolo | 97,3 % |
+| **Baccarat** | Carte · Punto Banco con tabellone Big Road | 98,9 % |
+| **Video Poker** | Carte · Jacks or Better | 99,5 % |
+| **Golden Chip** | Istantaneo · moltiplicatore dal vivo, esito verificabile | 99,0 % |
+
+Ogni gioco ha un **tutorial** al primo ingresso (riapribile con «Guida») e un
+**regolamento** con la tabella dei premi.
+
+### Le modalità
+
+- **Carriera**: si parte con 100 € e si sale di rango (da Ospite a Leggenda della
+  Strip) giocando. I ranghi danno premi e il bonus del giorno.
+- **Gioco Libero**: 10.000 €, tutti i giochi sbloccati, ricarica automatica.
+  Per provare senza conseguenze.
+- **Sfida High Roller**: da 2.500 € bisogna arrivare a 25.000 €. Se il saldo scende
+  sotto la puntata minima, la sfida è persa.
+
+### Altro
+
+- **Profilo** con statistiche per gioco (giri, puntato, vinto, ritorno effettivo)
+  e riconoscimenti da sbloccare.
+- **Impostazioni**: lingua (italiano / inglese), qualità grafica, volume di musica
+  ed effetti, movimento ridotto, contatore FPS.
+- **Telefono**: home e sala funzionano in verticale, i tavoli in orizzontale.
+  Si può aggiungere alla schermata Home come un'app (vedi [`docs/IPHONE.md`](docs/IPHONE.md)).
+- **Tasto Indietro del browser**: riporta alla schermata precedente
+  (tavolo → sala → home) invece di chiudere il sito.
+
+I progressi (saldo, rango, statistiche, impostazioni) sono salvati **nel browser**
+di chi gioca (`localStorage`): non c'è un server né un account.
+
+---
+
+## Come funziona
+
+È un sito statico: tutto gira nel browser, senza backend.
+
+- **TypeScript + Vite**: il codice sorgente sta in `src/`, Vite lo prepara per il browser.
+- **PixiJS** (WebGPU o WebGL2) disegna i tavoli, i rulli e lo sfondo animato in un `<canvas>`.
+- **HTML e CSS** sopra il canvas per home, sala, barre di gioco, finestre e messaggi.
+- **GSAP** per le animazioni, **Zustand** per lo stato (saldo, rango, impostazioni).
+- **Musica ed effetti** sono sintetizzati in tempo reale con la Web Audio API.
+
+### Organizzazione del codice
+
+```
+src/
+├── main.ts            avvio: caratteri, renderer, prima scena, interfaccia
+├── core/              renderer Pixi (App) e gestione delle scene (SceneManager)
+├── scenes/            lo sfondo animato della sala
+├── games/             un gioco per cartella (regole + scena), registry.ts li elenca
+│   └── slots/engine/  motore delle slot: rulli, linee, simulazione dell'RTP
+├── state/             saldo, modalità, ranghi, riconoscimenti, salvataggio
+├── ui/                home, sala, finestre, tutorial, stili CSS
+├── art/               palette dei colori, immagini, texture
+├── audio/             musica ed effetti sonori
+├── fx/                transizioni, particelle, ambienti dello sfondo
+└── i18n/              testi in italiano e inglese
+tests/                 test automatici (Vitest)
+tools/                 script per asset, collaudi e taratura delle slot
+docs/                  stato dei lavori, crediti degli asset, guida iPhone
+```
+
+### Regole di qualità
+
+Il file [`CONSTRAINTS.md`](CONSTRAINTS.md) elenca le regole decise con il committente,
+ognuna controllata da un test. Le principali:
+
+- **I soldi sono sempre in centesimi interi**, mai numeri con la virgola (100,00 € = `10000`).
+- **Puntata minima 0,10 €**, massima il saldo disponibile.
+- **I colori nascono tutti da `src/art/palette.ts`**: nessun colore scritto a mano altrove.
+- **Le transizioni restano sotto i 350 ms per fase.**
+- **L'RTP dichiarato in sala è vero**: un test simula milioni di giri per ogni slot.
+
+---
+
+## Avviarlo in locale
+
+Serve [Node.js](https://nodejs.org) (versione LTS).
+
+```bash
+npm install
+npm run dev
+```
+
+Poi si apre **http://localhost:5273**.
+
+> Aprire `index.html` con un doppio clic **non funziona**: il codice va prima
+> preparato da Vite, quindi serve sempre `npm run dev` (o la build).
+
+### Comandi utili
+
+| Comando | A cosa serve |
+|---|---|
+| `npm run dev` | sito in sviluppo, si aggiorna da solo a ogni modifica |
+| `npm run dev:lan` | come sopra, raggiungibile anche dal telefono sulla stessa Wi-Fi |
+| `npm run build` | crea la versione finale in `dist/` |
+| `npm run preview` | prova in locale la versione finale |
+| `npm run typecheck` | controlla gli errori di TypeScript |
+| `npm test` | esegue tutti i test (la simulazione RTP delle slot richiede qualche minuto) |
+
+---
+
+## Pubblicazione
+
+Il sito è pubblicato su **Vercel**: a ogni commit sul ramo `main` Vercel esegue
+`npm run build` e pubblica la cartella `dist/`. Non serve nessuna configurazione
+in più.
+
+---
+
+## Crediti
+
+Icone 3D: Microsoft Fluent Emoji (licenza MIT). Fotografie e caratteri: elenco
+completo con le licenze in [`docs/CREDITS.md`](docs/CREDITS.md).
