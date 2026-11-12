@@ -25,8 +25,13 @@ import { FELT_TURQUOISE, velvet, feltStar, cardSlot, embossedText } from '@/game
 // ─────────────────────────────────────────────── GEOMETRIA (px di design)
 
 export const CAB = { x: 120, y: 104, w: 1680, h: 818 };
-export const PAY = { x: 300, y: 122, w: 1320, h: 314, rowH: 32, pad: 13, nameW: 470 };
-export const PAY_COL_W = (PAY.w - PAY.nameW) / 5;
+/**
+ * Tabella premi: nomi a sinistra, UNA colonna di premi (multipli della
+ * puntata) stretta sulla destra. La colonna e' larga come una delle cinque
+ * di una volta: allargata a tutto il vetro diventava un muro rosso.
+ */
+export const PAY_COL_W = 260;
+export const PAY = { x: 300, y: 122, w: 1320, h: 314, rowH: 32, pad: 13, nameW: 1320 - PAY_COL_W };
 export const CARD_WIDTH = 220;
 export const CARD_Y = 628;
 export const CARD_XS = [460, 710, 960, 1210, 1460];
@@ -137,16 +142,14 @@ export function paytableTexture(rows: number): Texture {
         ctx.fillRect(0, PAY.pad + i * PAY.rowH, w, PAY.rowH);
       }
     }
-    // Separatori di colonna.
+    // Separatore fra nomi e premi.
     ctx.strokeStyle = rgba(PALETTE.gold.deep, 0.5);
     ctx.lineWidth = 1;
-    for (let c = 0; c <= 4; c++) {
-      const x = PAY.nameW + c * PAY_COL_W + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(x, 10);
-      ctx.lineTo(x, h - 10);
-      ctx.stroke();
-    }
+    const x = PAY.nameW + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x, 10);
+    ctx.lineTo(x, h - 10);
+    ctx.stroke();
     ctx.restore();
     roundRectPath(ctx, 4, 4, w - 8, h - 8, 16);
     ctx.lineWidth = 3;
@@ -159,13 +162,13 @@ export function paytableTexture(rows: number): Texture {
   });
 }
 
-/** Colonna attiva (monete in gioco): rubino profondo, come le macchine vere. */
+/** Colonna dei premi: rubino profondo, come le macchine vere. */
 export function columnHighlightTexture(): Texture {
   const h = PAY.h - 18;
   return bake('vp/col-hl', PAY_COL_W, h, (ctx, w) => {
     const g = ctx.createLinearGradient(0, 0, 0, h);
     // Colonna attiva in rubino ACCESO: e' l'unico blocco saturo sulla
-    // tabella chiara, e indica le monete in gioco senza bisogno di leggerle.
+    // tabella chiara, e porta l'occhio dritto ai premi.
     g.addColorStop(0, css(PALETTE.red.light));
     g.addColorStop(0.5, css(PALETTE.red.core));
     g.addColorStop(1, css(PALETTE.red.deep));

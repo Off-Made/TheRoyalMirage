@@ -3,12 +3,12 @@
  *
  *   world
  *   ├─ cabinet    cornice laccata e velluto ametista (art.ts, una texture)
- *   ├─ paytable   vetro scuro + colonna delle monete + riga accesa + cifre
- *   ├─ status     monete in gioco, puntata totale, combinazione in mano
+ *   ├─ paytable   vetro scuro + colonna dei premi + riga accesa + cifre
+ *   ├─ status     puntata della mano, combinazione in mano
  *   └─ cards      cinque carte fisse con il loro cartiglio TENUTA
  *
  * ── Il giro ──
- *   Distribuisci → placeBet(monete × valore) → cinque carte girate in fila
+ *   Distribuisci → placeBet(puntata) → cinque carte girate in fila
  *   click (o tasti 1-5) → TENUTA sulle carte da tenere
  *   Pesca → le altre si rigirano e arrivano le nuove → evaluate → settle
  *
@@ -35,7 +35,7 @@ import { CardView } from '@/games/cards/CardView';
 import { warmCardTextures } from '@/games/cards/art';
 import { isModalOpen } from '@/ui/dom/Modal';
 import { sfxBetConfirm, sfxCardDeal, sfxCardFlip, sfxChip, sfxLose } from '@/audio/synth';
-import { MAX_COINS, PAY_ORDER, PokerHand, coinsWon, type HandRank } from './rules';
+import { PAYS, PAY_ORDER, PokerHand, type HandRank } from './rules';
 import { VideoPokerMachine, type DrawResult } from './machine';
 import {
   CAB,
@@ -52,11 +52,6 @@ import {
 } from './art';
 import { vs } from './strings';
 import type { TutorialStep } from '@/ui/dom/Tutorial';
-
-import { toast } from '@/ui/dom/Toasts';
-
-/** Avviso 'valore × monete' gia' mostrato una volta. */
-const STAKE_SEEN_KEY = 'golden-oasis:vp-stake-seen';
 
 /** Riga di stato fra tabella (fondo a 436) e carte (cima a 474): testo basso, niente sollevamenti. */
 const STATUS_Y = 455;
@@ -93,13 +88,9 @@ export class VideoPokerScene extends GameScene {
   }
   private colHL!: Sprite;
   private rowHL!: Sprite;
-  private payCells: Text[][] = [];
-  private coinsText!: Text;
   private stakeText!: Text;
   private handText!: Text;
 
-  private betOneBtn: HTMLButtonElement | null = null;
-  private betMaxBtn: HTMLButtonElement | null = null;
   /** Tieni/Scarta dal tavolo: lo stesso dato della voce nelle Impostazioni. */
   private tapBtn: HTMLButtonElement | null = null;
   private readonly onKey = (e: KeyboardEvent) => this.handleKey(e);
@@ -110,11 +101,6 @@ export class VideoPokerScene extends GameScene {
       primaryLabel: vs('deal'),
       onPrimary: () => this.onPrimary(),
       betMode: 'stepper',
-      betLabel: vs('coinValue'),
-      // La puntata e' il valore di UNA moneta: la giocata e' moneta × monete.
-      stakeFactor: () => this.machine.coins,
-      betNote: () =>
-        vs('betNote', { coins: this.machine.coins, total: formatMoney(this.machine.stake(this.denom)) }),
     };
   }
 
@@ -125,7 +111,8 @@ export class VideoPokerScene extends GameScene {
     const pay = new Sprite(paytableTexture(PAY_ORDER.length));
     pay.position.set(PAY.x, PAY.y);
     this.colHL = new Sprite(columnHighlightTexture());
-    this.colHL.y = PAY.y + 9;
+    // Una sola colonna di premi (multipli della puntata), sempre accesa.
+    this.colHL.position.set(PAY.x + PAY.nameW, PAY.y + 9);
     this.rowHL = new Sprite(rowHighlightTexture());
     this.rowHL.x = PAY.x + 10;
     this.rowHL.visible = false;
@@ -136,19 +123,11 @@ export class VideoPokerScene extends GameScene {
       const name = makeText(vs(rank).toUpperCase(), 'label', 19, { fill: PALETTE.gold.light, letterSpacing: 2 });
       name.anchor.set(0, 0.5);
       name.position.set(PAY.x + 34, y);
-      const row = [name];
-      for (let c = 1; c <= MAX_COINS; c++) {
-        const v = makeText(String(coinsWon(rank, c)), 'value', 21, { fill: PALETTE.text.strong });
-        v.position.set(PAY.x + PAY.nameW + (c - 0.5) * PAY_COL_W, y);
-        row.push(v);
-      }
-      this.payCells.push(row);
-      cells.addChild(...row);
+      const v = makeText(`${PAYS[rank]}×`, 'value', 21, { fill: PALETTE.text.strong });
+      v.position.set(PAY.x + PAY.nameW + PAY_COL_W / 2, y);
+      cells.addChild(name, v);
     });
 
-    this.coinsText = makeText('', 'label', 19, { fill: PALETTE.text.strong });
-    this.coinsText.anchor.set(0, 0.5);
-    this.coinsText.position.set(CARD_XS[0]! - CARD_WIDTH / 2, STATUS_Y);
     this.stakeText = makeText('', 'label', 19, { fill: PALETTE.text.strong });
     this.stakeText.anchor.set(1, 0.5);
     this.stakeText.position.set(CARD_XS[4]! + CARD_WIDTH / 2, STATUS_Y);
@@ -176,7 +155,7 @@ export class VideoPokerScene extends GameScene {
       cardLayer.addChild(v, h, d);
     });
 
-    this.world.addChild(cab, pay, this.colHL, this.rowHL, cells, this.coinsText, this.stakeText, this.handText, cardLayer);
+    this.world.addChild(cab, pay, this.colHL, this.rowHL, cells, this.stakeText, this.handText, cardLayer);
     this.refreshMeters();
   }
 
@@ -187,19 +166,11 @@ export class VideoPokerScene extends GameScene {
 
   async enter(): Promise<void> {
     await super.enter();
-    const mk = (label: string, fn: () => void) => {
-      const b = button(label, { variant: 'secondary', size: 'sm', onClick: fn });
-      b.classList.add('go-hud__toggle');
-      this.hud.extra.append(b);
-      return b;
-    };
-    this.betOneBtn = mk(vs('betOne'), () => this.betOne());
-    this.betMaxBtn = mk(vs('betMax'), () => this.betMax());
     this.tapBtn = button('', { variant: 'secondary', size: 'sm', onClick: () => this.toggleTapMode() });
     this.tapBtn.classList.add('go-hud__toggle');
     this.hud.topExtra.append(this.tapBtn);
     window.addEventListener('keydown', this.onKey);
-    // La denominazione si cambia dall'HUD: la puntata totale a schermo la segue.
+    // La puntata si cambia dall'HUD: quella a schermo la segue.
     this.unsubBet = store.subscribe(() => this.refreshMeters());
     this.refreshControls();
     this.hud.message(vs('hintIdle'));
@@ -219,23 +190,14 @@ export class VideoPokerScene extends GameScene {
     return settings().reducedMotion ? 0.05 : 1;
   }
 
-  /** Valore della moneta: la mano in corso usa quello fissato alla distribuzione. */
+  /** Puntata dell'HUD: la mano in corso usa quella fissata alla distribuzione. */
   private get denom(): number {
     return wallet().bet;
   }
 
   private refreshMeters(): void {
-    if (this.disposed || !this.coinsText) return;
-    const m = this.machine;
-    this.coinsText.text = `${vs('coins').toUpperCase()} ${m.coins}`;
-    this.stakeText.text = `${vs('total').toUpperCase()} ${formatMoney(m.stake(this.denom))}`;
-    this.colHL.x = PAY.x + PAY.nameW + (m.coins - 1) * PAY_COL_W;
-    this.payCells.forEach((row) =>
-      row.slice(1).forEach((t, c) => (t.style.fill = c + 1 === m.coins ? PALETTE.text.strong : PALETTE.text.soft))
-    );
-    // Cambiare le monete sposta il tetto del valore moneta: la plancia deve
-    // ricalcolare quali comandi rapidi hanno ancora effetto.
-    this.hud?.refresh();
+    if (this.disposed || !this.stakeText) return;
+    this.stakeText.text = `${vs('total').toUpperCase()} ${formatMoney(this.machine.stake(this.denom))}`;
   }
 
   /**
@@ -256,8 +218,6 @@ export class VideoPokerScene extends GameScene {
       this.tapBtn.textContent = this.discardMode ? vs('tapDiscard') : vs('tapHold');
       this.tapBtn.disabled = !free;
     }
-    if (this.betOneBtn) this.betOneBtn.disabled = !free;
-    if (this.betMaxBtn) this.betMaxBtn.disabled = !free;
     this.hud.lockBet(!free);
     this.hud.setPrimary(this.phase === 'hold' || this.phase === 'drawing' ? vs('draw') : vs('deal'), {
       enabled: free || this.phase === 'hold',
@@ -282,21 +242,6 @@ export class VideoPokerScene extends GameScene {
   private onPrimary(): void {
     if (this.phase === 'idle') void this.deal();
     else if (this.phase === 'hold') void this.draw();
-  }
-
-  private betOne(): void {
-    if (this.phase !== 'idle') return;
-    sfxChip();
-    this.machine.betOne();
-    this.refreshMeters();
-  }
-
-  /** "Punta max" fa come le macchine vere: cinque monete e distribuisce subito. */
-  private betMax(): void {
-    if (this.phase !== 'idle') return;
-    this.machine.betMax();
-    this.refreshMeters();
-    void this.deal();
   }
 
   private handleKey(e: KeyboardEvent): void {
@@ -345,13 +290,8 @@ export class VideoPokerScene extends GameScene {
     const denom = this.denom;
     const stake = this.machine.stake(denom);
     if (!this.placeBet(stake)) {
-      this.hud.message(vs('insufficient', { coins: this.machine.coins }), 'warn');
+      this.hud.message(vs('insufficient'), 'warn');
       return;
-    }
-    // Una volta sola: chi scrive "4 €" deve sapere che con 5 monete ne gioca 20.
-    if (this.machine.coins > 1 && !localStorage.getItem(STAKE_SEEN_KEY)) {
-      localStorage.setItem(STAKE_SEEN_KEY, '1');
-      toast(vs('stakeWarn', { coin: formatMoney(denom), coins: this.machine.coins, total: formatMoney(stake) }), 'info', 7000);
     }
     const t = ++this.token;
     this.roundActive = true;
@@ -489,20 +429,16 @@ export class VideoPokerScene extends GameScene {
         text: vs(this.discardMode ? 'tutCardsDiscard' : 'tutCardsHold'),
         target: this.designTarget(CARD_XS[0]! - CARD_WIDTH / 2, CARD_Y - CARD_H / 2, CARD_XS[4]! - CARD_XS[0]! + CARD_WIDTH, CARD_H + 70),
       },
-      { title: vs('tutCoinsT'), text: vs('tutCoinsX'), target: '.go-hud__extra' },
+      { title: vs('tutCoinsT'), text: vs('tutCoinsX'), target: '.go-hud__meter--bet' },
     ];
   }
 
   protected rules(): Node {
     const p = (text: string) => el('p', { text });
-    const head = el('tr', {}, el('th', { text: vs('rulesHand') }));
-    for (let c = 1; c <= MAX_COINS; c++) head.append(el('th', { text: vs('rulesCoin', { n: c }) }));
+    const head = el('tr', {}, el('th', { text: vs('rulesHand') }), el('th', { text: vs('rulesPay') }));
     const table = el('table', { style: { width: '100%', borderCollapse: 'collapse', margin: '6px 0 14px' } }, head);
     for (const rank of PAY_ORDER) {
-      const tr = el('tr', {}, el('td', { text: vs(rank) }));
-      for (let c = 1; c <= MAX_COINS; c++) {
-        tr.append(el('td', { text: String(coinsWon(rank, c)), style: { textAlign: 'center' } }));
-      }
+      const tr = el('tr', {}, el('td', { text: vs(rank) }), el('td', { text: `${PAYS[rank]}×`, style: { textAlign: 'center' } }));
       table.append(tr);
     }
     return div(
@@ -526,8 +462,6 @@ export class VideoPokerScene extends GameScene {
     this.unsubBet?.();
     this.unsubBet = null;
     gsap.killTweensOf(this.rowHL);
-    this.betOneBtn = null;
-    this.betMaxBtn = null;
     super.dispose();
   }
 }

@@ -255,8 +255,6 @@ const RUNS = {
 
   videopoker: () =>
     check('videopoker', async () => {
-      await call('betMax');
-      await sleep(800);
       // `deal` va atteso per FASE, non a tempo: la prima mano cuoce le
       // texture delle facce delle carte e, col rendering software, cinque
       // carte possono prendere trenta secondi. Nessun `sleep` tarato a mano
@@ -267,7 +265,7 @@ const RUNS = {
       await sleep(1200);
       void rawCall('draw');
       await waitSettle();
-      return { note: 'punta max, tieni 1, pesca' };
+      return { note: 'distribuisci, tieni 1, pesca' };
     }, { after: 2500 }),
 
   crash: () =>

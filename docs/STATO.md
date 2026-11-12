@@ -34,7 +34,7 @@ l'esclusione vitest raccoglie anche i test del backup, che falliscono da sempre)
 | Slot: chiarezza | linea piena solo sul tratto pagato + tratteggio + "3 DI FILA"; testo HUD sempre presente; regolamento con "Come si vince" (schema) e premi in € alla puntata attuale | `SlotScene.ts`, `slots/view/strings.ts` |
 | Hold & Win | respin con mini-rulli veri per cella, scritta "RESPIN n", riepilogo monete + jackpot | `SlotScene.playHoldAndWin` |
 | Blackjack | mosse grandi al centro della barra (`hud.actions`, `setActing`), scorciatoie C/S/R/D | `GameHud.ts`, `BlackjackScene.ts`, `hud.css` |
-| Video poker | impostazione Tieni/Scarta (`vpTapMode`), riga "× 5 monete = 20,00 € a mano" (`betNote`), avviso una tantum | `VideoPokerScene.ts`, `machine.holdAll()`, `settings.ts` |
+| Video poker | impostazione Tieni/Scarta (`vpTapMode`); dal 12/11 niente monete: la puntata è la giocata, tabella in multipli (Scala Reale 800×) | `VideoPokerScene.ts`, `machine.ts`, `rules.ts` |
 | XP | 10 + 8·log2(1 + puntata/1 €) a GIRO (niente XP per raddoppi/split); soglie fino a 1,7 M, premi ridotti; salvataggio v3 con migrazione (rango conservato) | `progression.ts`, `save.ts`, `store.ts` |
 | Statistiche | per gioco (giri, puntato, vinto, netto, max, ritorno effettivo vs teorico) nel profilo; ARRAY e non mappa perché `deepMerge` tiene solo le chiavi dei default | `wallet.ts` `bumpStats`, `ProfileModal.ts` |
 | Tutorial | velo SVG con ritaglio + fumetto, parte al primo ingresso (`tutorialsSeen`), pulsante "Guida", reset dalle Impostazioni; passi per gioco in `tutorialGame()` | `ui/dom/Tutorial.ts`, `GameScene.ts` |

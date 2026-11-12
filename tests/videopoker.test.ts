@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { cards } from '@/games/cards/card';
 import { seededRng } from '@/games/slots/engine/rng';
-import { PokerHand, coinsWon, evaluate, payout } from '@/games/videopoker/rules';
+import { PAYS, PokerHand, evaluate, payout } from '@/games/videopoker/rules';
 
 const rank = (s: string) => evaluate(cards(s)).rank;
 
@@ -41,8 +41,8 @@ describe('classifica', () => {
   it('soglia Jacks or Better', () => {
     expect(rank('10C 10D 2H 5S 9C')).toBe('nothing');
     expect(rank('AC AD 2H 5S 9C')).toBe('jacksOrBetter');
-    expect(payout(evaluate(cards('10C 10D 2H 5S 9C')).rank, 1, 1)).toBe(0);
-    expect(payout(evaluate(cards('JC JD 2H 5S 9C')).rank, 1, 1)).toBe(1);
+    expect(payout(evaluate(cards('10C 10D 2H 5S 9C')).rank, 1)).toBe(0);
+    expect(payout(evaluate(cards('JC JD 2H 5S 9C')).rank, 1)).toBe(1);
   });
 
   it('indica le carte della combinazione', () => {
@@ -52,28 +52,26 @@ describe('classifica', () => {
 });
 
 describe('pagamenti', () => {
-  it('paytable 9/6 per moneta', () => {
-    expect(coinsWon('straightFlush', 1)).toBe(50);
-    expect(coinsWon('fourKind', 1)).toBe(25);
-    expect(coinsWon('fullHouse', 1)).toBe(9);
-    expect(coinsWon('flush', 1)).toBe(6);
-    expect(coinsWon('straight', 1)).toBe(4);
-    expect(coinsWon('threeKind', 1)).toBe(3);
-    expect(coinsWon('twoPair', 1)).toBe(2);
-    expect(coinsWon('jacksOrBetter', 1)).toBe(1);
-    expect(coinsWon('nothing', 5)).toBe(0);
-    expect(coinsWon('fullHouse', 5)).toBe(45);
+  it('paytable 9/6 in multipli della puntata', () => {
+    expect(PAYS.royalFlush).toBe(800);
+    expect(PAYS.straightFlush).toBe(50);
+    expect(PAYS.fourKind).toBe(25);
+    expect(PAYS.fullHouse).toBe(9);
+    expect(PAYS.flush).toBe(6);
+    expect(PAYS.straight).toBe(4);
+    expect(PAYS.threeKind).toBe(3);
+    expect(PAYS.twoPair).toBe(2);
+    expect(PAYS.jacksOrBetter).toBe(1);
+    expect(PAYS.nothing).toBe(0);
   });
 
-  it('scala reale: 250 per moneta sotto il massimo, 4000 a 5 monete', () => {
-    expect(coinsWon('royalFlush', 1)).toBe(250);
-    expect(coinsWon('royalFlush', 4)).toBe(1000);
-    expect(coinsWon('royalFlush', 5)).toBe(4000);
-  });
-
-  it('vincita in fiche = monete x valore moneta', () => {
-    expect(payout('flush', 5, 10)).toBe(300);
-    expect(payout('royalFlush', 5, 2)).toBe(8000);
+  it('vincita in fiche = moltiplicatore x puntata, senza monete', () => {
+    expect(payout('jacksOrBetter', 1)).toBe(1);
+    expect(payout('flush', 10)).toBe(60);
+    expect(payout('fullHouse', 5)).toBe(45);
+    expect(payout('royalFlush', 1)).toBe(800);
+    expect(payout('royalFlush', 2)).toBe(1600);
+    expect(payout('nothing', 50)).toBe(0);
   });
 });
 

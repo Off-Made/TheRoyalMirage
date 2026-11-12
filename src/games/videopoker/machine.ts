@@ -6,17 +6,16 @@
  *
  *   idle ──deal──▶ hold ──finish──▶ done ──deal──▶ hold ...
  *
- *   · le monete (1..5) si cambiano solo a macchina ferma
  *   · le carte si tengono/rilasciano solo in 'hold'
  *   · `finish` pesca e valuta UNA volta: una seconda chiamata restituisce
  *     null, cosi' ne' un doppio click su "Pesca" ne' l'uscita a meta'
  *     animazione possono pescare (o pagare) due volte
  *
- * Monete e valore della moneta sono FISSATI alla distribuzione: cambiare
- * la denominazione nell'HUD a mano aperta non deve cambiare il premio.
+ * La puntata e' quella scelta nell'HUD, senza moltiplicatori di monete, ed
+ * e' FISSATA alla distribuzione: cambiarla a mano aperta non cambia il premio.
  */
 
-import { type Evaluation, type PokerHand, MAX_COINS, evaluate, payout } from './rules';
+import { type Evaluation, type PokerHand, evaluate, payout } from './rules';
 
 export type MachinePhase = 'idle' | 'hold' | 'done';
 
@@ -31,38 +30,22 @@ export interface DrawResult {
 }
 
 export class VideoPokerMachine {
-  coins = MAX_COINS;
   phase: MachinePhase = 'idle';
   hand: PokerHand | null = null;
   held: boolean[] = [false, false, false, false, false];
-  /** Monete e valore con cui e' stata distribuita la mano in corso. */
-  private dealt = { coins: MAX_COINS, denom: 1 };
+  /** Puntata con cui e' stata distribuita la mano in corso. */
+  private dealtStake = 1;
 
-  /** Puntata totale in fiche per un dato valore della moneta. */
-  stake(denom: number): number {
-    return this.coins * Math.max(0, Math.round(denom));
-  }
-
-  get canChangeCoins(): boolean {
-    return this.phase !== 'hold';
-  }
-
-  /** "Punta 1": una moneta in piu', da 5 si torna a 1 (come sulle macchine vere). */
-  betOne(): void {
-    if (!this.canChangeCoins) return;
-    this.coins = this.coins >= MAX_COINS ? 1 : this.coins + 1;
-  }
-
-  betMax(): void {
-    if (!this.canChangeCoins) return;
-    this.coins = MAX_COINS;
+  /** Fiche giocate in una mano con la puntata `bet`: proprio quella. */
+  stake(bet: number): number {
+    return Math.max(0, Math.round(bet));
   }
 
   /** Nuova mano servita (la puntata e' gia' stata scalata dalla scena). */
-  start(hand: PokerHand, denom: number): void {
+  start(hand: PokerHand, bet: number): void {
     this.hand = hand;
     this.held = [false, false, false, false, false];
-    this.dealt = { coins: this.coins, denom: Math.round(denom) };
+    this.dealtStake = this.stake(bet);
     this.phase = 'hold';
   }
 
@@ -90,7 +73,7 @@ export class VideoPokerMachine {
     const replaced = this.hand.draw(this.held);
     const evaluation = evaluate(this.hand.cards);
     this.phase = 'done';
-    const { coins, denom } = this.dealt;
-    return { replaced, evaluation, win: payout(evaluation.rank, coins, denom), stake: coins * denom };
+    const stake = this.dealtStake;
+    return { replaced, evaluation, win: payout(evaluation.rank, stake), stake };
   }
 }

@@ -195,18 +195,11 @@ describe('baccarat — tappeto delle puntate', () => {
 describe('video poker — la macchina', () => {
   const hand = () => PokerHand.rigged(cards('JS JH 4C 7D 9S'), cards('2C 3D 5H 8C 9D'));
 
-  it("le monete si cambiano solo a macchina ferma; Punta 1 gira da 5 a 1", () => {
+  it("la puntata e' la giocata: nessun moltiplicatore di monete", () => {
     const m = new VideoPokerMachine();
-    expect(m.coins).toBe(5);
-    m.betOne();
-    expect(m.coins).toBe(1);
-    m.betOne();
-    expect(m.coins).toBe(2);
-    m.start(hand(), 10);
-    m.betMax();
-    m.betOne();
-    expect(m.coins).toBe(2);
-    expect(m.stake(10)).toBe(20);
+    expect(m.stake(1)).toBe(1);
+    expect(m.stake(5)).toBe(5);
+    expect(m.stake(10)).toBe(10);
   });
 
   it('TENUTA solo durante la scelta, e la pesca avviene una volta sola', () => {
@@ -220,19 +213,20 @@ describe('video poker — la macchina', () => {
     const r = m.finish();
     expect(r?.replaced).toEqual([2, 3, 4]);
     expect(r?.evaluation.rank).toBe('jacksOrBetter');
-    expect(r?.stake).toBe(50);
-    expect(r?.win).toBe(50);
+    expect(r?.stake).toBe(10);
+    expect(r?.win).toBe(10);
     expect(m.finish()).toBeNull();
     expect(m.toggle(2)).toBe(false);
   });
 
-  it('monete e valore restano quelli della distribuzione', () => {
+  it('la puntata resta quella della distribuzione', () => {
     const m = new VideoPokerMachine();
     m.start(PokerHand.rigged(cards('AS AH AD 7C 2S'), cards('AC 9D')), 5);
     m.held = [true, true, true, false, false];
     const r = m.finish()!;
     expect(r.evaluation.rank).toBe('fourKind');
-    expect(r.win).toBe(25 * 5 * 5);
+    expect(r.stake).toBe(5);
+    expect(r.win).toBe(25 * 5);
   });
 
   it("senza tenute (uscita a meta') si pesca tutto e si paga la mano finale", () => {

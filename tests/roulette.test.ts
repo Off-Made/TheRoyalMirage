@@ -361,7 +361,7 @@ describe('statistiche', () => {
 });
 
 describe('traiettoria: la pallina si ferma nella casella estratta', () => {
-  const opts = { duration: 4.6, settle: 1.3, rotorTurns: 1.7, ballTurns: 5 };
+  const opts = { duration: 7, settle: 1.8, rotorTurns: 1.4, ballTurns: 4 };
 
   it('per ogni numero e da partenze casuali', () => {
     const rng = seededRng(7);

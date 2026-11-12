@@ -12,15 +12,16 @@
  *
  * ── "9/6" ──
  * Il nome della paytable viene dai pagamenti di Full (9) e Colore (6) per
- * moneta: e' la versione "full pay", la piu' generosa in circolazione.
- * Con strategia ottimale e 5 monete l'RTP e' 99,54%.
+ * unita' di puntata: e' la versione "full pay", la piu' generosa in circolazione.
+ * Con strategia ottimale l'RTP e' 99,54%.
  *
- * ── La Scala Reale e le 5 monete ──
- * Unica eccezione alla linearita': con 1-4 monete la Scala Reale paga 250
- * per moneta, con 5 monete paga 4000 (cioe' 800 per moneta). E' il motivo
- * per cui ogni manuale dice "gioca sempre il massimo": a meno di 5 monete
- * l'RTP scende a ~98,4%. Il registry dichiara 99,5 — vero SOLO a 5 monete,
- * e le regole a schermo lo dicono esplicitamente.
+ * ── Niente monete: la puntata e' la giocata ──
+ * Le macchine vere fanno puntare da 1 a 5 "monete" e il campo puntata vale
+ * UNA moneta: chi scrive 1 € ne gioca 5 senza accorgersene. Qui no: la
+ * puntata scelta e' esattamente cio' che si gioca, e la tabella paga in
+ * multipli della puntata. La Scala Reale paga 800×, cioe' il valore "a
+ * 5 monete" (4000 / 5): cosi' l'RTP resta 99,54% a qualunque puntata,
+ * senza la trappola del "gioca sempre il massimo".
  */
 
 import type { Rng } from '@/games/slots/engine/rng';
@@ -51,9 +52,9 @@ export const PAY_ORDER: readonly Exclude<HandRank, 'nothing'>[] = [
   'jacksOrBetter',
 ];
 
-/** Pagamento per moneta (Scala Reale: valore sotto le 5 monete). */
-export const PAY_PER_COIN: Record<HandRank, number> = {
-  royalFlush: 250,
+/** Pagamento in multipli della puntata (vincita lorda). */
+export const PAYS: Record<HandRank, number> = {
+  royalFlush: 800,
   straightFlush: 50,
   fourKind: 25,
   fullHouse: 9,
@@ -65,30 +66,17 @@ export const PAY_PER_COIN: Record<HandRank, number> = {
   nothing: 0,
 };
 
-export const MAX_COINS = 5;
-/** Scala Reale a 5 monete: 4000 in totale (800 per moneta). */
-export const ROYAL_MAX_BET = 4000;
-/** RTP teorico con strategia ottimale a 5 monete. */
-export const RTP_MAX_BET = 99.54;
+/** RTP teorico con strategia ottimale. */
+export const RTP = 99.54;
 
 /**
- * Valore in MONETE di una mano: quante monete paga la combinazione
- * giocando `coins` monete (1..5). E' il numero stampato nella paytable.
- */
-export function coinsWon(rank: HandRank, coins: number): number {
-  const c = Math.max(1, Math.min(MAX_COINS, Math.floor(coins)));
-  if (rank === 'royalFlush' && c === MAX_COINS) return ROYAL_MAX_BET;
-  return PAY_PER_COIN[rank] * c;
-}
-
-/**
- * Vincita lorda in fiche: monete vinte x valore della moneta.
+ * Vincita lorda in fiche: moltiplicatore x puntata.
  * Gia' intera per costruzione (interi per interi): nessun arrotondamento.
  * "Lorda" come vuole `settle`: Jacks or Better paga 1 per 1, cioe' la
  * puntata torna indietro e basta.
  */
-export function payout(rank: HandRank, coins: number, denom: number): number {
-  return coinsWon(rank, coins) * Math.max(0, Math.round(denom));
+export function payout(rank: HandRank, stake: number): number {
+  return PAYS[rank] * Math.max(0, Math.round(stake));
 }
 
 /** Valore per l'ordinamento: Asso alto (14). */

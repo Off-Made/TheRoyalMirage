@@ -481,14 +481,17 @@ export class RouletteScene extends GameScene {
     this.drawPlaque(null);
 
     const s = settings();
-    const duration = s.reducedMotion ? 0.45 : s.fastPlay ? 2.3 : 4.6;
-    const settle = s.reducedMotion ? 0.1 : s.fastPlay ? 0.7 : 1.3;
+    // Lancio lungo e pochi giri: la frenata e' una cubica, quindi la velocita'
+    // di partenza vale ~3 × giri/durata. A 7 s e 4 giri l'occhio segue la
+    // pallina invece di vedere una scia (con 4,6 s e 5 giri era quasi il doppio).
+    const duration = s.reducedMotion ? 0.45 : s.fastPlay ? 3.5 : 7;
+    const settle = s.reducedMotion ? 0.1 : s.fastPlay ? 0.9 : 1.8;
     const ball0 = this.restRel === null ? this.wheel.rotorAngle - Math.PI / 2 : this.wheel.rotorAngle + this.restRel;
     const plan = planSpin(n, this.wheel.rotorAngle, ball0, {
       duration,
       settle,
-      rotorTurns: s.reducedMotion ? 0.35 : 1.7,
-      ballTurns: s.reducedMotion ? 1 : s.fastPlay ? 3 : 5,
+      rotorTurns: s.reducedMotion ? 0.35 : 1.4,
+      ballTurns: s.reducedMotion ? 1 : s.fastPlay ? 3 : 4,
     });
     this.anim = { plan, t: 0 };
     this.restRel = null;
