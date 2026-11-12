@@ -20,6 +20,14 @@
  *   5. Il seme rivelato non si riusa mai: se ne genera uno nuovo, se ne mostra
  *      la nuova impronta, e il ciclo riparte.
  *
+ * ── Il freno di serie (brake.ts) ──
+ * Dopo 3 voli a ×10 o piu' negli ultimi 4, i 2 voli successivi hanno un
+ * tetto di ×1,50:  crash = min(crash del seme, tetto). Il tetto dipende solo
+ * da voli gia' rivelati ed e' noto prima del decollo, quindi la verifica
+ * resta completa: `verify` ricalcola il crash del seme e applica lo stesso
+ * tetto. L'RTP scende in modo trascurabile (il freno scatta in ~0,4% delle
+ * finestre di quattro voli).
+ *
  * ── Dalla firma al moltiplicatore ──
  * Dei 256 bit dell'HMAC si prendono i primi 52 (13 cifre esadecimali): e'
  * esattamente la mantissa di un double, quindi l'intero e' rappresentato
@@ -128,6 +136,11 @@ export interface Verification {
   crashOk: boolean;
 }
 
+/** Crash effettivo: quello del seme, limitato dal tetto del freno se c'e'. */
+export function applyCap(crashCents: number, capCents: number | null | undefined): number {
+  return capCents == null ? crashCents : Math.max(100, Math.min(crashCents, capCents));
+}
+
 /**
  * Verifica indipendente di un volo concluso. Senza `expected*` si limita a
  * ricalcolare (utile per il verificatore manuale della modale).
@@ -136,10 +149,10 @@ export async function verify(
   serverSeed: string,
   clientSeed: string,
   nonce: number,
-  expected: { hash?: string; crashCents?: number } = {}
+  expected: { hash?: string; crashCents?: number; capCents?: number | null } = {}
 ): Promise<Verification> {
   const hash = await sha256Hex(serverSeed);
-  const crashCents = await crashCentsFor(serverSeed, clientSeed, nonce);
+  const crashCents = applyCap(await crashCentsFor(serverSeed, clientSeed, nonce), expected.capCents);
   return {
     hash,
     hashOk: expected.hash === undefined || expected.hash.toLowerCase() === hash,
@@ -154,7 +167,12 @@ export interface RevealedRound {
   serverHash: string;
   clientSeed: string;
   nonce: number;
+  /** Crash effettivo del volo (tetto compreso). */
   crashCents: number;
+  /** Crash deciso dal solo seme, prima del tetto. */
+  rawCents: number;
+  /** Tetto del freno di serie, o null se il volo era libero. */
+  capCents: number | null;
 }
 
 /**
@@ -179,6 +197,8 @@ export class FairDealer {
   /** Ultimo volo rivelato, per la modale "Equita'". */
   last: RevealedRound | null = null;
   private rolled: number | null = null;
+  private raw: number | null = null;
+  private cap: number | null = null;
 
   constructor(clientSeed = randomClientSeed(), nonce = 1) {
     this.clientSeed = clientSeed;
@@ -194,6 +214,8 @@ export class FairDealer {
     this.#seed = randomHex(32);
     this.serverHash = await sha256Hex(this.#seed);
     this.rolled = null;
+    this.raw = null;
+    this.cap = null;
   }
 
   /**
@@ -212,9 +234,18 @@ export class FairDealer {
     return this.rolled !== null;
   }
 
-  /** Decide il crash del volo corrente (idempotente finche' non si rivela). */
-  async roll(): Promise<number> {
-    if (this.rolled === null) this.rolled = await crashCentsFor(this.#seed, this.clientSeed, this.nonce);
+  /**
+   * Decide il crash del volo corrente (idempotente finche' non si rivela).
+   * `capCents` e' il tetto del freno di serie: conta solo alla PRIMA chiamata,
+   * perche' a volo deciso nulla deve poterlo spostare.
+   */
+  async roll(capCents: number | null = null): Promise<number> {
+    if (this.rolled === null) {
+      const raw = await crashCentsFor(this.#seed, this.clientSeed, this.nonce);
+      this.raw = raw;
+      this.cap = capCents;
+      this.rolled = applyCap(raw, capCents);
+    }
     return this.rolled;
   }
 
@@ -227,6 +258,8 @@ export class FairDealer {
       clientSeed: this.clientSeed,
       nonce: this.nonce,
       crashCents,
+      rawCents: this.raw ?? crashCents,
+      capCents: this.cap,
     };
     this.last = r;
     this.nonce++;

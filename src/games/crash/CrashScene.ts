@@ -53,6 +53,7 @@ import type { EnvironmentId } from '@/fx/environment/registry';
 import { barTexture, chartPanelTexture, flareTexture, glowTexture, shardTexture } from './art';
 import { houseChipTexture } from '@/art/houseChip';
 import { FairDealer, verify, type RevealedRound } from './fair';
+import { afterFlight, capFor, loadBrake, saveBrake } from './brake';
 import { cs } from './strings';
 
 // ─────────────────────────────────────────────── GEOMETRIA
@@ -414,9 +415,12 @@ export class CrashScene extends GameScene {
     this.crashBadge.visible = false;
     this.resetFlightVisuals();
 
+    // Freno di serie: il tetto dipende solo dai voli gia' conclusi (salvati,
+    // cosi' uscire e rientrare non lo azzera) ed e' fissato PRIMA del decollo.
+    const cap = capFor(loadBrake());
     let decided: number;
     try {
-      decided = await this.dealer.roll();
+      decided = await this.dealer.roll(cap);
     } catch {
       // Senza WebCrypto non c'e' esito verificabile: la puntata torna
       // indietro (payout = puntata) invece di restare in un limbo.
@@ -436,7 +440,7 @@ export class CrashScene extends GameScene {
     this.phase = 'flying';
     sfxBetConfirm();
     this.hud.setPrimary(cs('cashOut', { m: '1.00' }), { enabled: true, variant: 'danger' });
-    this.hud.message('');
+    this.hud.message(cap === null ? '' : cs('braked', { m: fmtMult(cap) }));
   }
 
   /** Incasso volontario (pulsante) o automatico, al moltiplicatore mostrato. */
@@ -496,6 +500,7 @@ export class CrashScene extends GameScene {
     // e' incassato: e' la storia del gioco, non del giocatore. Il valore e'
     // pubblico da qui in poi, perche' il seme viene rivelato subito sotto.
     this.history.unshift({ crash: this.crashCents, cashedAt });
+    saveBrake(afterFlight(loadBrake(), this.crashCents));
     if (this.history.length > HISTORY_MAX) this.history.length = HISTORY_MAX;
     this.renderHistory();
     this.multText.text = `${fmtMult(cents)}×`;
@@ -560,6 +565,9 @@ export class CrashScene extends GameScene {
       // Decisione di prodotto: uscire a volo in corso INCASSA. Vedi testata.
       this.phase = 'over';
       this.finish(Math.floor((this.bet * this.cents) / 100));
+      // Il volo era deciso: conta per il freno di serie come se fosse
+      // arrivato allo schianto (altrimenti un volo frenato non si consumerebbe).
+      saveBrake(afterFlight(loadBrake(), this.crashCents));
     } else {
       // Volo gia' concluso ma non ancora saldato (non puo' succedere oggi,
       // perche' `finish` precede sempre `endFlight`): paga zero, non resta
@@ -890,6 +898,10 @@ export class CrashScene extends GameScene {
       lastBox.append(...row(cs('fairClientSeed'), last.clientSeed));
       lastBox.append(...row(cs('fairNonce'), String(last.nonce)));
       lastBox.append(...row(cs('fairCrash'), `×${fmtMult(last.crashCents)}`));
+      if (last.capCents !== null) {
+        lastBox.append(...row(cs('fairRaw'), `×${fmtMult(last.rawCents)}`));
+        lastBox.append(...row(cs('fairCap'), `×${fmtMult(last.capCents)}`));
+      }
       lastBox.append(
         el('span'),
         button(cs('fairVerify'), {
@@ -899,6 +911,7 @@ export class CrashScene extends GameScene {
             void verify(last.serverSeed, last.clientSeed, last.nonce, {
               hash: last.serverHash,
               crashCents: last.crashCents,
+              capCents: last.capCents,
             }).then((v) => {
               verdict.textContent =
                 v.hashOk && v.crashOk
@@ -919,6 +932,7 @@ export class CrashScene extends GameScene {
       el('h3', { text: cs('rulesPays') }),
       el('p', { text: cs('rulesPays1') }),
       el('p', { text: cs('rulesPays2', { rtp: info.rtp.toFixed(1) }) }),
+      el('p', { text: cs('rulesBrake') }),
       el('h3', { text: cs('fairTitle') }),
       el('p', { text: cs('fairIntro') }),
       fair,

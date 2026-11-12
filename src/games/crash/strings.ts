@@ -19,6 +19,7 @@ export const cs = defineStrings({
     crashed: 'Schianto a ×{m}',
     crashedLost: 'Schianto a ×{m}: puntata persa',
     cryptoFail: 'Equità non verificabile su questa pagina: puntata restituita',
+    braked: 'Freno di serie: dopo tre voli altissimi, questo volo si ferma al massimo a ×{m}',
 
     // ── Auto-incasso
     autoLabel: 'Auto',
@@ -44,6 +45,8 @@ export const cs = defineStrings({
       'Incassare a ×m paga m volte la puntata. La probabilità di arrivare a ×m è 0,99 / m: a ×2 è il 49,5%, a ×10 il 9,9%, a ×100 lo 0,99%.',
     rulesPays2:
       'Il ritorno teorico è {rtp}% per QUALUNQUE obiettivo di incasso: m × 0,99 / m = 0,99. Il margine del banco sta nel 99 al posto di 100, e nei voli che si schiantano subito a ×1,00 (circa 1,98%).',
+    rulesBrake:
+      'Freno di serie: se 3 degli ultimi 4 voli si sono schiantati a ×10 o più, i 2 voli successivi si schiantano al massimo a ×1,50 (anche prima, se il seme lo decide). Il tetto è annunciato prima del decollo e compare nella verifica del volo.',
 
     // ── Modale equità
     fairTitle: 'Equità dimostrabile',
@@ -59,6 +62,8 @@ export const cs = defineStrings({
     fairNone: 'Nessun volo concluso in questa sessione: gioca una volta e il seme verrà rivelato qui.',
     fairSeed: 'Seme server rivelato',
     fairCrash: 'Schianto',
+    fairCap: 'Tetto del freno di serie',
+    fairRaw: 'Schianto deciso dal seme',
     fairVerify: 'Verifica questo volo',
     fairOk: 'Verificato: l’impronta corrisponde al seme e il moltiplicatore ricalcolato è ×{m}.',
     fairBad: 'ATTENZIONE: la verifica non torna. Impronta {hash}, schianto {crash}.',
@@ -83,6 +88,7 @@ export const cs = defineStrings({
     crashed: 'Crashed at ×{m}',
     crashedLost: 'Crashed at ×{m}: bet lost',
     cryptoFail: 'Fairness cannot be verified on this page: bet refunded',
+    braked: 'Streak brake: after three sky-high flights, this one stops at ×{m} at most',
 
     autoLabel: 'Auto',
     autoHint: 'Cash out automatically at this multiplier',
@@ -105,6 +111,8 @@ export const cs = defineStrings({
       'Cashing out at ×m pays m times the bet. The chance of reaching ×m is 0.99 / m: 49.5% at ×2, 9.9% at ×10, 0.99% at ×100.',
     rulesPays2:
       'Theoretical return is {rtp}% for ANY cash-out target: m × 0.99 / m = 0.99. The house edge lives in the 99 instead of 100, and in the flights that crash instantly at ×1.00 (about 1.98%).',
+    rulesBrake:
+      'Streak brake: if 3 of the last 4 flights crashed at ×10 or more, the next 2 flights crash at ×1.50 at most (earlier, if the seed says so). The cap is announced before take-off and shows up in the flight verification.',
 
     fairTitle: 'Provably fair',
     fairIntro:
@@ -119,6 +127,8 @@ export const cs = defineStrings({
     fairNone: 'No flight completed in this session yet: play once and the seed will be revealed here.',
     fairSeed: 'Revealed server seed',
     fairCrash: 'Crash',
+    fairCap: 'Streak brake cap',
+    fairRaw: 'Crash decided by the seed',
     fairVerify: 'Verify this flight',
     fairOk: 'Verified: the hash matches the seed and the recomputed multiplier is ×{m}.',
     fairBad: 'WARNING: verification failed. Hash {hash}, crash {crash}.',

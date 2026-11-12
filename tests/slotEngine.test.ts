@@ -15,6 +15,9 @@ function rows(...r: string[]): Grid {
 }
 const BET = 20; // puntata di linea 1
 const stops = [0, 0, 0, 0, 0];
+/** Premi letti dalla paytable: i test verificano le regole, non la taratura. */
+const SEVEN = M.symbols.find((s) => s.id === 'F')!.pays!;
+const STAR = M.symbols.find((s) => s.id === 'S')!.scatterPays!;
 
 describe('linee', () => {
   it('paga 5 Sette sulla linea centrale con la paytable', () => {
@@ -22,7 +25,7 @@ describe('linee', () => {
     const w = o.wins.find((x) => x.lineIndex === 0)!;
     expect(w.symbol).toBe('F');
     expect(w.count).toBe(5);
-    expect(w.payout).toBe(630);
+    expect(w.payout).toBe(SEVEN[5]);
     expect(w.startReel).toBe(0);
   });
 
@@ -38,7 +41,7 @@ describe('linee', () => {
     expect(w.count).toBe(3);
     expect(w.startReel).toBe(2);
     expect(w.cells).toEqual([[2, 1], [3, 1], [4, 1]]);
-    expect(w.payout).toBeCloseTo(11.4);
+    expect(w.payout).toBeCloseTo(SEVEN[3]!);
   });
 
   it('paga un tris centrale (rulli 2-3-4) e tiene la combinazione migliore della linea', () => {
@@ -47,7 +50,7 @@ describe('linee', () => {
     // Quattro Sette dal rullo 2 battono qualunque tris contenuto nella stessa corsa.
     const four = evaluateGrid(M, rows('AKQJT', 'KFFFF', 'TJQKA'), stops, BET, 'base');
     expect(four.wins.filter((x) => x.lineIndex === 0)).toHaveLength(1);
-    expect(four.wins.find((x) => x.lineIndex === 0)).toMatchObject({ count: 4, startReel: 1, payout: 70 });
+    expect(four.wins.find((x) => x.lineIndex === 0)).toMatchObject({ count: 4, startReel: 1, payout: SEVEN[4] });
   });
 
   it('il wild espanso completa le linee che attraversano il suo rullo', () => {
@@ -71,13 +74,13 @@ describe('scatter', () => {
     const o = evaluateGrid(M, rows('SKQJT', 'AJSQK', 'TJQKS'), stops, BET, 'base');
     const sc = o.wins.find((w) => w.kind === 'scatter')!;
     expect(sc.count).toBe(3);
-    expect(sc.payout).toBe(3 * BET);
+    expect(sc.payout).toBeCloseTo(STAR[3]! * BET);
     expect(o.freeSpinsAwarded).toBe(11);
   });
 
   it('il moltiplicatore dei giri gratis si applica a tutte le vincite', () => {
     const o = evaluateGrid(M, rows('AKQJT', 'FFFFF', 'TJQKA'), stops, BET, 'free', 3);
-    expect(o.wins.find((x) => x.lineIndex === 0)!.payout).toBe(1890);
+    expect(o.wins.find((x) => x.lineIndex === 0)!.payout).toBeCloseTo(SEVEN[5]! * 3);
   });
 });
 

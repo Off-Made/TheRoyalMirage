@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   FairDealer,
+  applyCap,
   crashCentsFor,
   crashCentsFromHex,
   crashCentsFromUniform,
@@ -101,6 +102,35 @@ describe('determinismo e verifica', () => {
     expect(d.nonce).toBe(42);
     expect(d.setClientSeed('nuovo')).toBe(true);
     expect(d.clientSeed).toBe('nuovo');
+  });
+
+  it('freno di serie: il tetto limita il crash e la verifica lo ricalcola', async () => {
+    // Serve un volo che senza tetto sarebbe salito oltre ×1,50 (~66% dei voli).
+    let r: Awaited<ReturnType<FairDealer['reveal']>> | null = null;
+    for (let i = 0; i < 40 && !r; i++) {
+      const d = new FairDealer('freno', 1);
+      await d.init();
+      const crash = await d.roll(150);
+      expect(crash).toBeLessThanOrEqual(150);
+      expect(await d.roll(null)).toBe(crash); // a volo deciso il tetto non si sposta
+      const rev = await d.reveal();
+      if (rev.rawCents > 150) r = rev;
+    }
+    expect(r).not.toBeNull();
+    expect(r!.crashCents).toBe(150);
+    expect(r!.capCents).toBe(150);
+    expect((await verify(r!.serverSeed, r!.clientSeed, r!.nonce, r!)).crashOk).toBe(true);
+    // Senza dichiarare il tetto, il crash ×1,50 non torna: il freno non e' nascosto.
+    const noCap = await verify(r!.serverSeed, r!.clientSeed, r!.nonce, { crashCents: r!.crashCents });
+    expect(noCap.crashOk).toBe(false);
+    expect(noCap.crashCents).toBe(r!.rawCents);
+  });
+
+  it('applyCap: senza tetto non cambia nulla, con tetto prende il minimo', () => {
+    expect(applyCap(1234, null)).toBe(1234);
+    expect(applyCap(1234, 150)).toBe(150);
+    expect(applyCap(120, 150)).toBe(120);
+    expect(applyCap(100, 150)).toBe(100);
   });
 });
 

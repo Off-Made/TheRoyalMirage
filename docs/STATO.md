@@ -1,5 +1,17 @@
 # THE ROYAL MIRAGE — Stato dei lavori
 
+## Punto di ripresa — 12/11/2026: richieste del committente dopo la pubblicazione
+
+Verifica: `tsc` pulito · **474/474 test** (slot RTP compreso) · prova a schermo di video poker e Golden Chip.
+
+| Area | Cosa | File |
+|---|---|---|
+| Roulette | lancio più lento: 7 s e 4 giri di pallina (veloce 3,5 s) | `RouletteScene.ts` (`planSpin`) |
+| Video poker | niente monete: la puntata è la giocata (1 € = 1 €), tabella a colonna unica in multipli, Scala Reale 800× (RTP 99,54%); via Punta 1 / Punta max | `videopoker/*` |
+| Lucky Sevens | si vince MENO SPESSO a RTP invariato: strisce piatte + 1 Palazzo per rullo, premi ×1,28. Hit 58% → 44,5%, giri gratis 1/165, RTP 96,1% ± 0,18 (20M giri). Strumento: `tools/tune-go.ts` | `machines/goldenOasis.ts` |
+| Golden Chip | freno di serie: 3 voli ≥ ×10 negli ultimi 4 → i 2 voli successivi hanno tetto ×1,50. Regola pubblica (guida, messaggio HUD, riga nella verifica): crash = min(seme, tetto), `verify` accetta `capCents`. Stato salvato in `golden-oasis:crash-brake` | `crash/brake.ts`, `fair.ts`, `CrashScene.ts` |
+| Test motore slot | leggono i premi dalla paytable invece di numeri fissi | `tests/slotEngine.test.ts` |
+
 ## Punto di ripresa — 11/11/2026 (pomeriggio): ULTIME RIFINITURE, secondo giro di appunti
 
 Piano: `~/.claude/plans/voglio-andare-ad-attuare-wise-ladybug.md`. Verifica: `tsc` pulito · **466/466 test**
@@ -263,4 +275,4 @@ RTP copre in automatico ogni macchina registrata in `machines/index.ts`.
 
 | Gioco | RTP dichiarato | Misurato |
 |---|---|---|
-| Golden Oasis | 96,2% | 96,238% ± 0,156 (20M giri) · giri gratis 1/194 · hit 33% |
+| Golden Oasis | 96,2% | 96,1% ± 0,18 (20M giri, 12/11) · giri gratis 1/165 · hit 44,5% |

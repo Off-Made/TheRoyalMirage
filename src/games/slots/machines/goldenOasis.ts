@@ -23,19 +23,19 @@ export const GO_SYMBOLS: readonly SymbolDef[] = [
     glyph: '⭐',
     tint: PALETTE.red.light,
     scatter: true,
-    scatterPays: { 3: 3, 4: 10, 5: 50 },
+    scatterPays: { 3: 3.8, 4: 13, 5: 64 },
     freeSpins: { 3: 11, 4: 16, 5: 22 },
   },
-  { id: 'F', label: 'Sette', glyph: '7', tint: PALETTE.accent.sapphire.light, pays: { 3: 11.4, 4: 70, 5: 630 } },
-  { id: 'C', label: 'Bar', glyph: '▬', tint: PALETTE.gold.light, pays: { 3: 9.1, 4: 52.5, 5: 378 } },
-  { id: 'O', label: 'Campana', glyph: '🔔', tint: PALETTE.neon.cyan, pays: { 3: 6.5, 4: 35, 5: 252 } },
-  { id: 'D', label: 'Diamante', glyph: '💎', tint: PALETTE.accent.sapphire.light, pays: { 3: 5.2, 4: 28, 5: 189 } },
-  { id: 'G', label: 'Quadrifoglio', glyph: '🍀', tint: PALETTE.gold.light, pays: { 3: 4.55, 4: 21, 5: 126 } },
-  { id: 'A', label: 'Anguria', glyph: '🍉', tint: PALETTE.red.light, pays: { 3: 2.3, 4: 14, 5: 94.5 } },
-  { id: 'K', label: 'Uva', glyph: '🍇', tint: PALETTE.win.light, pays: { 3: 2.3, 4: 10.5, 5: 75.6 } },
-  { id: 'Q', label: 'Mandarino', glyph: '🍊', tint: PALETTE.accent.violet.light, pays: { 3: 1.65, 4: 8.5, 5: 63 } },
-  { id: 'J', label: 'Limone', glyph: '🍋', tint: PALETTE.accent.sapphire.light, pays: { 3: 1.3, 4: 7, 5: 50.4 } },
-  { id: 'T', label: 'Ciliegie', glyph: '🍒', tint: PALETTE.gold.light, pays: { 3: 1, 4: 5.5, 5: 37.8 } },
+  { id: 'F', label: 'Sette', glyph: '7', tint: PALETTE.accent.sapphire.light, pays: { 3: 14.6, 4: 90, 5: 806 } },
+  { id: 'C', label: 'Bar', glyph: '▬', tint: PALETTE.gold.light, pays: { 3: 11.6, 4: 67, 5: 484 } },
+  { id: 'O', label: 'Campana', glyph: '🔔', tint: PALETTE.neon.cyan, pays: { 3: 8.3, 4: 45, 5: 323 } },
+  { id: 'D', label: 'Diamante', glyph: '💎', tint: PALETTE.accent.sapphire.light, pays: { 3: 6.7, 4: 36, 5: 242 } },
+  { id: 'G', label: 'Quadrifoglio', glyph: '🍀', tint: PALETTE.gold.light, pays: { 3: 5.8, 4: 27, 5: 161 } },
+  { id: 'A', label: 'Anguria', glyph: '🍉', tint: PALETTE.red.light, pays: { 3: 2.9, 4: 18, 5: 121 } },
+  { id: 'K', label: 'Uva', glyph: '🍇', tint: PALETTE.win.light, pays: { 3: 2.9, 4: 13, 5: 97 } },
+  { id: 'Q', label: 'Mandarino', glyph: '🍊', tint: PALETTE.accent.violet.light, pays: { 3: 2.1, 4: 11, 5: 81 } },
+  { id: 'J', label: 'Limone', glyph: '🍋', tint: PALETTE.accent.sapphire.light, pays: { 3: 1.7, 4: 9, 5: 65 } },
+  { id: 'T', label: 'Ciliegie', glyph: '🍒', tint: PALETTE.gold.light, pays: { 3: 1.3, 4: 7, 5: 48 } },
 ];
 
 /** Le 20 linee, una riga per rullo (0 = alto, 1 = centro, 2 = basso). */
@@ -46,13 +46,18 @@ export const GO_PAYLINES: readonly Payline[] = [
   [1, 1, 0, 1, 1], [1, 1, 2, 1, 1], [0, 2, 0, 2, 0], [2, 0, 2, 0, 2], [1, 0, 2, 0, 1],
 ];
 
-/** Frequenze per rullo nel gioco base. Indice = rullo. */
+/**
+ * Frequenze per rullo nel gioco base. Indice = rullo.
+ * Strisce "piatte" (simboli quasi tutti a pari frequenza) e un solo Palazzo
+ * per rullo: si vince in ~44,5% dei giri invece del 58%. Le vincite sono piu'
+ * rare ma piu' ricche: i premi sono stati alzati del 28% per tenere l'RTP.
+ */
 export const GO_BASE_COUNTS: readonly StripCounts[] = [
-  { S: 1, F: 2, C: 3, O: 3, D: 4, G: 4, A: 5, K: 5, Q: 6, J: 7, T: 7 },
-  { W: 2, S: 2, F: 2, C: 3, O: 3, D: 4, G: 4, A: 5, K: 5, Q: 6, J: 7, T: 7 },
-  { W: 2, S: 1, F: 2, C: 3, O: 3, D: 4, G: 4, A: 5, K: 5, Q: 6, J: 7, T: 7 },
-  { W: 2, S: 2, F: 2, C: 3, O: 3, D: 4, G: 4, A: 5, K: 5, Q: 6, J: 7, T: 7 },
-  { S: 1, F: 2, C: 3, O: 3, D: 4, G: 4, A: 5, K: 5, Q: 6, J: 7, T: 7 },
+  { S: 1, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
+  { W: 1, S: 2, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
+  { W: 1, S: 1, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
+  { W: 1, S: 2, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
+  { S: 1, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
 ];
 
 /** Nei giri gratis: piu' Palazzi, meno carte basse. */
