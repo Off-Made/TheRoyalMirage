@@ -31,7 +31,9 @@ beforeAll(async () => {
   };
 
   S = await import('@/state/store');
-});
+  // L'import dinamico, con tutte le suite in parallelo, puo' superare i 10 s
+  // di default solo per preparare i file: il limite largo evita falsi rossi.
+}, 30_000);
 
 /** Riporta lo stato a una carriera appena iniziata. */
 beforeEach(() => {

@@ -24,7 +24,7 @@
  * RTP dichiarato 96,0%: verificato da `tests/slotRtp.test.ts`.
  */
 
-import type { MachineDef, SymbolDef } from '../engine/types';
+import type { CascadeRule, MachineDef, SymbolDef } from '../engine/types';
 import { buildStrip, type StripCounts } from '../engine/strips';
 import { PALETTE } from '@/art/palette';
 
@@ -48,7 +48,38 @@ export const DF_SYMBOLS: readonly SymbolDef[] = [
   { id: 'Q', label: 'Regina', glyph: 'Q', tint: PALETTE.accent.violet.light, pays: { 3: 1, 4: 4.1, 5: 21.75 } },
   { id: 'J', label: 'Fante', glyph: 'J', tint: PALETTE.neon.pink, pays: { 3: 1, 4: 3.6, 5: 17.4 } },
   { id: 'T', label: 'Dieci', glyph: '10', tint: PALETTE.neon.cyan, pays: { 3: 0.65, 4: 2.55, 5: 13.05 } },
+  // Non paga in combinazione: 3, 4 o 5 Biglietti ovunque aprono la Cascata.
+  { id: 'B', label: 'Biglietto', glyph: '🎟', tint: PALETTE.neon.pink },
 ];
+
+/**
+ * Cascata: 3, 4 o 5 Biglietti danno 8, 12 o 16 giri a cascata. Ogni
+ * esplosione consecutiva alza il moltiplicatore: ×1 → ×2 → ×3 → ×5 → ×8.
+ */
+export const DF_CASCADE: CascadeRule = {
+  symbol: 'B',
+  spins: { 3: 8, 4: 12, 5: 16 },
+  ladder: [1, 2, 3, 5, 10],
+  // Un giro senza vincite fa scendere il moltiplicatore di un gradino, non a ×1.
+  stepBack: true,
+  // Un Biglietto durante la cascata aggiunge 5 giri (raro, al massimo 2 volte).
+  retriggerSpins: 5,
+  retriggerCap: 2,
+};
+
+/**
+ * Strisce della cascata: quelle del gioco base senza Biglietti. Un solo
+ * Biglietto, sul rullo centrale, dentro una striscia lunga il triplo: cosi'
+ * esce in circa un bonus su sei.
+ */
+function cascadeCounts(base: readonly StripCounts[]): StripCounts[] {
+  return base.map((c, i) => {
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(c)) if (k !== 'B') out[k] = (k === 'W' ? 1 : v) * (i === 2 ? 3 : 1);
+    if (i === 2) out.B = 1;
+    return out;
+  });
+}
 
 /**
  * Frequenze per rullo nel gioco base. Il rullo 1 non ha wild; la Luna e'
@@ -56,11 +87,11 @@ export const DF_SYMBOLS: readonly SymbolDef[] = [
  * con due Lune gia' a terra e' quello che si guarda rallentare.
  */
 export const DF_BASE_COUNTS: readonly StripCounts[] = [
-  { S: 1, H: 4, R: 4, P: 4, F: 6, A: 6, K: 6, Q: 8, J: 8, T: 8 },
-  { W: 2, S: 1, H: 4, R: 4, P: 4, F: 6, A: 6, K: 6, Q: 8, J: 8, T: 8 },
-  { W: 2, S: 2, H: 4, R: 4, P: 4, F: 6, A: 6, K: 6, Q: 8, J: 8, T: 8 },
-  { W: 2, S: 1, H: 4, R: 4, P: 4, F: 6, A: 6, K: 6, Q: 8, J: 8, T: 8 },
-  { W: 2, S: 1, H: 4, R: 4, P: 4, F: 6, A: 6, K: 6, Q: 8, J: 8, T: 8 },
+  { B: 1, S: 1, H: 4, R: 4, P: 4, F: 6, A: 6, K: 6, Q: 8, J: 8, T: 7 },
+  { W: 2, B: 1, S: 1, H: 4, R: 4, P: 4, F: 6, A: 6, K: 6, Q: 8, J: 8, T: 7 },
+  { W: 2, B: 1, S: 2, H: 4, R: 4, P: 4, F: 6, A: 6, K: 6, Q: 8, J: 8, T: 7 },
+  { W: 2, B: 1, S: 1, H: 4, R: 4, P: 4, F: 6, A: 6, K: 6, Q: 8, J: 8, T: 7 },
+  { W: 2, B: 1, S: 1, H: 4, R: 4, P: 4, F: 6, A: 6, K: 6, Q: 8, J: 8, T: 7 },
 ];
 
 /**
@@ -106,6 +137,8 @@ export function makeDesertFalcon(
       retrigger: true,
       cap: 50,
     },
+    // La cascata usa i rulli dei giri gratis, ricchi di Statuette: piu' vincite e piu' catene.
+    cascade: { ...DF_CASCADE, strips: cascadeCounts(base).map((c, i) => buildStrip(c, 0xdf77 + i * 1259, stack)) },
     rtpTarget: 96.0,
     betDivisor: 50,
   };

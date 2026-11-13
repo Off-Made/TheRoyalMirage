@@ -28,7 +28,7 @@
  * RTP dichiarato 95,8%: verificato da `tests/slotRtp.test.ts`.
  */
 
-import type { JackpotDef, MachineDef, SymbolDef } from '../engine/types';
+import type { ChestRule, JackpotDef, MachineDef, SymbolDef } from '../engine/types';
 import { buildStrip, type StripCounts } from '../engine/strips';
 import { PALETTE } from '@/art/palette';
 
@@ -44,7 +44,25 @@ export const SF_SYMBOLS: readonly SymbolDef[] = [
   { id: 'Q', label: 'Regina', glyph: 'Q', tint: PALETTE.accent.violet.light, pays: { 3: 0.8, 4: 3.8, 5: 14.7, 6: 38.2 } },
   { id: 'J', label: 'Fante', glyph: 'J', tint: PALETTE.accent.sapphire.light, pays: { 3: 0.8, 4: 3.05, 5: 11.75, 6: 30.55 } },
   { id: 'T', label: 'Dieci', glyph: '10', tint: PALETTE.neon.halo, pays: { 3: 0.5, 4: 2.3, 5: 9.4, 6: 26.75 } },
+  // Non paga in combinazione: 5 o piu' Forzieri ovunque aprono la scelta dei forzieri.
+  { id: 'F', label: 'Forziere', glyph: '🧰', tint: PALETTE.gold.core },
 ];
+
+/**
+ * I Forzieri: cinque forzieri, cinque moltiplicatori diversi della puntata.
+ * 4 o piu' Forzieri sui rulli aprono il bonus; piu' Forzieri = tabella piu'
+ * ricca: con 4 un 50× e' raro, con 6 o piu' diventa una possibilita' concreta.
+ */
+export const SF_CHESTS: ChestRule = {
+  symbol: 'F',
+  trigger: 4,
+  chests: 5,
+  tables: [
+    { min: 4, values: [1, 2, 3, 5, 8, 10, 15, 25, 50], weights: [40, 32, 22, 10, 3, 1.2, 0.5, 0.2, 0.08] },
+    { min: 5, values: [1, 2, 3, 5, 8, 10, 15, 25, 50], weights: [18, 20, 19, 16, 12, 8, 5, 2.4, 1] },
+    { min: 6, values: [1, 2, 3, 5, 8, 10, 15, 25, 50], weights: [8, 12, 14, 15, 14, 12, 9, 5, 3] },
+  ],
+};
 
 /** I quattro jackpot, dal minore al maggiore. L'ultimo (GRAND) e' quello a griglia piena. */
 export const SF_JACKPOTS: readonly JackpotDef[] = [
@@ -64,12 +82,12 @@ export const SF_COIN_WEIGHTS: readonly number[] = [300, 240, 150, 100, 80, 50, 3
 
 /** Frequenze per rullo. Il rullo 1 non ha la Corona. */
 export const SF_COUNTS: readonly StripCounts[] = [
-  { C: 6, X: 4, R: 4, E: 6, Y: 6, A: 8, K: 8, Q: 8, J: 10, T: 10 },
-  { W: 2, C: 6, X: 4, R: 4, E: 6, Y: 6, A: 8, K: 8, Q: 8, J: 10, T: 10 },
-  { W: 2, C: 6, X: 4, R: 4, E: 6, Y: 6, A: 8, K: 8, Q: 8, J: 10, T: 10 },
-  { W: 2, C: 6, X: 4, R: 4, E: 6, Y: 6, A: 8, K: 8, Q: 8, J: 10, T: 10 },
-  { W: 2, C: 6, X: 4, R: 4, E: 6, Y: 6, A: 8, K: 8, Q: 8, J: 10, T: 10 },
-  { W: 2, C: 6, X: 4, R: 4, E: 6, Y: 6, A: 8, K: 8, Q: 8, J: 10, T: 10 },
+  { F: 2, C: 5, X: 4, R: 4, E: 6, Y: 6, A: 8, K: 8, Q: 7, J: 8, T: 7 },
+  { W: 2, F: 3, C: 5, X: 4, R: 4, E: 6, Y: 6, A: 8, K: 8, Q: 7, J: 8, T: 7 },
+  { W: 2, F: 2, C: 5, X: 4, R: 4, E: 6, Y: 6, A: 8, K: 8, Q: 7, J: 8, T: 7 },
+  { W: 2, F: 3, C: 5, X: 4, R: 4, E: 6, Y: 6, A: 8, K: 8, Q: 7, J: 8, T: 7 },
+  { W: 2, F: 2, C: 5, X: 4, R: 4, E: 6, Y: 6, A: 8, K: 8, Q: 7, J: 8, T: 7 },
+  { W: 2, F: 3, C: 5, X: 4, R: 4, E: 6, Y: 6, A: 8, K: 8, Q: 7, J: 8, T: 7 },
 ];
 
 /** Pile: abbassano la frequenza di vincita e creano rulli "pieni". */
@@ -104,6 +122,7 @@ export function makeSheikhsFortune(t: SheikhsFortuneTuning = {}): MachineDef {
       landChance: t.landChance ?? 0.054,
       jackpots: SF_JACKPOTS,
     },
+    chests: SF_CHESTS,
     rtpTarget: 95.8,
     betDivisor: 50,
   };

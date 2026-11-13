@@ -101,6 +101,8 @@ export interface SettingsState {
   demoBigWins: boolean;
   demoFreeSpins: boolean;
   demoHoldWin: boolean;
+  /** Bonus interni (ruota, cascata, forzieri) piu' frequenti. */
+  demoBonus: boolean;
   /** Auto-spin: numero di spin consecutivi. 0 = disattivato. */
   autoSpinCount: number;
 }
@@ -150,6 +152,7 @@ export function initialSettings(): SettingsState {
     demoBigWins: false,
     demoFreeSpins: false,
     demoHoldWin: false,
+    demoBonus: false,
     autoSpinCount: 0,
   };
 }

@@ -7,9 +7,10 @@ import { DEMO_BIG_WIN, DEMO_SHARE, demoCriterion, demoRound } from '@/games/slot
 import { seededRng } from '@/games/slots/engine/rng';
 import { GOLDEN_OASIS } from '@/games/slots/machines/goldenOasis';
 import { SHEIKHS_FORTUNE } from '@/games/slots/machines/sheikhsFortune';
+import { DESERT_FALCON } from '@/games/slots/machines/desertFalcon';
 
-const ON = { demoBigWins: true, demoFreeSpins: true, demoHoldWin: true };
-const OFF = { demoBigWins: false, demoFreeSpins: false, demoHoldWin: false };
+const ON = { demoBigWins: true, demoFreeSpins: true, demoHoldWin: true, demoBonus: true };
+const OFF = { demoBigWins: false, demoFreeSpins: false, demoHoldWin: false, demoBonus: false };
 const BET = 100;
 
 describe('presentazione', () => {
@@ -22,6 +23,14 @@ describe('presentazione', () => {
   it('pilota solo una parte dei giri', () => {
     expect(demoCriterion(GOLDEN_OASIS, BET, 'freeplay', ON, DEMO_SHARE - 0.01)).not.toBeNull();
     expect(demoCriterion(GOLDEN_OASIS, BET, 'freeplay', ON, DEMO_SHARE + 0.01)).toBeNull();
+  });
+
+  it('con piu interruttori accesi, ogni giro pilotato punta a UN solo evento scelto a caso', () => {
+    const big = demoCriterion(GOLDEN_OASIS, BET, 'freeplay', ON, 0, 0)!;
+    const bonus = demoCriterion(GOLDEN_OASIS, BET, 'freeplay', ON, 0, 0.99)!;
+    const rng = seededRng(9);
+    expect(demoRound(GOLDEN_OASIS, BET, rng, bonus).wheel).toBeTruthy();
+    expect(demoRound(GOLDEN_OASIS, BET, rng, big).totalPayout).toBeGreaterThanOrEqual(DEMO_BIG_WIN * BET);
   });
 
   it('ignora le caratteristiche che la macchina non ha', () => {
@@ -38,5 +47,13 @@ describe('presentazione', () => {
     expect(demoRound(GOLDEN_OASIS, BET, rng, big).totalPayout).toBeGreaterThanOrEqual(DEMO_BIG_WIN * BET);
     const hw = demoCriterion(SHEIKHS_FORTUNE, BET, 'freeplay', { ...OFF, demoHoldWin: true }, 0)!;
     expect(demoRound(SHEIKHS_FORTUNE, BET, rng, hw).holdAndWin).toBeTruthy();
+  });
+
+  it('porta anche ai nuovi bonus: ruota, cascata, forzieri', () => {
+    const rng = seededRng(6);
+    const on = { ...OFF, demoBonus: true };
+    expect(demoRound(GOLDEN_OASIS, BET, rng, demoCriterion(GOLDEN_OASIS, BET, 'freeplay', on, 0)!).wheel).toBeTruthy();
+    expect(demoRound(DESERT_FALCON, BET, rng, demoCriterion(DESERT_FALCON, BET, 'freeplay', on, 0)!).cascade).toBeTruthy();
+    expect(demoRound(SHEIKHS_FORTUNE, BET, rng, demoCriterion(SHEIKHS_FORTUNE, BET, 'freeplay', on, 0)!).chests).toBeTruthy();
   });
 });

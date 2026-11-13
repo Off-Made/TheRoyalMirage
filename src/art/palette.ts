@@ -57,6 +57,8 @@ export const PALETTE = {
   red: {
     light: 0xff6b7a,
     core: 0xd21e34,
+    /** Rosso piu' acceso, per scritte su fondo oro (lo spicchio ×50). */
+    bright: 0xff1f3d,
     deep: 0x8c1226,
     shadow: 0x4a0712,
   },

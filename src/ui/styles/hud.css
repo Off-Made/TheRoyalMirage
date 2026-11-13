@@ -514,6 +514,27 @@
   color: var(--text-soft);
   max-width: 80ch;
 }
+/* Guida dei giochi bonus: titolo in oro e passaggi numerati. */
+.go-pay__bonus-title {
+  margin: var(--sp-3) 0 var(--sp-1);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-lg);
+  letter-spacing: 0.03em;
+  color: var(--text-gold);
+}
+.go-pay__steps {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding-left: 1.4em;
+  max-width: 80ch;
+  color: var(--text-soft);
+}
+.go-pay__steps li::marker {
+  color: var(--text-gold);
+  font-weight: 800;
+}
 .go-pay__lines {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));

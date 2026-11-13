@@ -23,7 +23,7 @@ export const DEMO_BIG_WIN = 25;
 /** Tetto ai tentativi: se un criterio e' troppo raro si tiene l'ultimo esito. */
 const MAX_TRIES = 2000;
 
-type DemoFlags = Pick<SettingsState, 'demoBigWins' | 'demoFreeSpins' | 'demoHoldWin'>;
+type DemoFlags = Pick<SettingsState, 'demoBigWins' | 'demoFreeSpins' | 'demoHoldWin' | 'demoBonus'>;
 
 /** Criterio da soddisfare per questo giro, o null se il giro e' normale. */
 export function demoCriterion(
@@ -31,15 +31,20 @@ export function demoCriterion(
   bet: number,
   mode: ModeId,
   s: DemoFlags,
-  roll: number
+  roll: number,
+  pick: number = Math.random()
 ): ((o: RoundOutcome) => boolean) | null {
   if (mode !== 'freeplay' || roll >= DEMO_SHARE) return null;
   const tests: ((o: RoundOutcome) => boolean)[] = [];
   if (s.demoBigWins) tests.push((o) => o.totalPayout >= DEMO_BIG_WIN * bet);
   if (s.demoFreeSpins && m.freeSpins) tests.push((o) => o.free.length > 0);
   if (s.demoHoldWin && m.holdAndWin) tests.push((o) => !!o.holdAndWin);
+  if (s.demoBonus && (m.wheel || m.cascade || m.chests)) tests.push((o) => !!(o.wheel || o.cascade || o.chests));
   if (tests.length === 0) return null;
-  return (o) => tests.some((t) => t(o));
+  // Un solo evento per giro pilotato, scelto a caso tra quelli accesi: se
+  // bastasse "uno qualsiasi", vincerebbe sempre il piu' frequente (le vincite
+  // grandi) e i bonus rari non uscirebbero quasi mai.
+  return tests[Math.min(tests.length - 1, Math.floor(pick * tests.length))]!;
 }
 
 /** Esito del giro, eventualmente ritirato finche' non soddisfa `want`. */

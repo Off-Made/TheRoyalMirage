@@ -417,6 +417,25 @@
 @media (max-width: 560px) {
   .go-grid {
     grid-template-columns: 1fr;
+    gap: var(--sp-4);
+  }
+  /* Telefono: carte piu' compatte, copertina meno alta e testi un passo sotto. */
+  .go-card__cover .go-cover {
+    aspect-ratio: 2 / 1;
+  }
+  .go-card__body {
+    gap: var(--sp-1);
+    padding: var(--sp-3);
+  }
+  .go-card__name {
+    font-size: var(--fs-lg);
+  }
+  .go-card__specs {
+    gap: var(--sp-4);
+    margin: 0 0 var(--sp-1);
+  }
+  .go-card__hint {
+    margin: 0 0 var(--sp-1);
   }
   .go-filters {
     flex-wrap: nowrap;

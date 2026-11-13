@@ -1,5 +1,53 @@
 # THE ROYAL MIRAGE — Stato dei lavori
 
+## Punto di ripresa — 13/11/2026 (sera): RTP dei bonus, ruota e suspense
+
+Verifica: `tsc` pulito · tutti i test verdi, RTP delle slot compreso (Lucky Sevens 95,9%, Hollywood
+Nights 97,0%, Diamond Royale invariata).
+
+| Area | Cosa | File |
+|---|---|---|
+| Ruota — probabilità | primo giro quasi uniforme (`WheelSegment.first`: ×10 0,8, ×15 0,6, ×20 0,5, ×50 0,3, il resto 1); dal secondo contano `weight`, rimonta (×2 ai ×5+, ×0,6 a scarsi e STOP) e freno dopo ×10. Media ~18×, tetto 100× | `machines/goldenOasis.ts`, `engine/bonus.ts` (`wheelWeights(..., first)`) |
+| Ruota — ALTRO GIRO | vale +2: il giro non si conta e se ne aggiunge uno (con 2 rimasti se ne hanno 3). La grafica dello spicchio è la stessa | `engine/bonus.ts` (`runWheel`) |
+| Ruota — due Ruote sul rullo 5 | non era un caso: sul rullo 5 le due Ruote stavano a 2 posizioni, quindi uscivano insieme in alto e in basso e aprivano la ruota con una sola Ruota altrove. Ora `spreadApart` le tiene ad almeno 3 posizioni; per mantenere la frequenza (~1/225) le Ruote sono 3-2-3 sui rulli 1-3-5 | `engine/strips.ts`, `machines/goldenOasis.ts` |
+| Ruota — grafica | più grande (scala 0,97), numeri più grandi, ×50 in rosso acceso (`PALETTE.red.bright`), frenata lunga `expo.out` (6,4 s, 3,4 in turbo) | `view/wheelBonus.ts`, `art/bonusArt.ts`, `art/palette.ts` |
+| Cascata | senza vincita il moltiplicatore scende di UN gradino (`stepBack`, da ×10 a ×5); sale solo dopo una vincita vera. Strisce della cascata = quelle base con un Jolly per rullo; giri 8/12/16; un solo Biglietto per rullo 3 nel gioco base | `machines/desertFalcon.ts`, `engine/bonus.ts` |
+| Presentazione | con più interruttori accesi ogni giro pilotato punta a UN evento scelto a caso: prima bastava "uno qualsiasi" e vincevano sempre le vincite grandi, quindi i bonus quasi non uscivano | `slots/demo.ts`, i18n `settings.demoHint` |
+| Suspense | il rullo decisivo frena in un unico movimento continuo (`ReelView.teaseStop`, back.out(0,6)): niente più salto di posizione a rullo lento | `ReelView.ts`, `SlotScene.playSpin` |
+| Regolamento | Diamond Royale: spiegazione passo per passo dell'Hold & Win prima dei Forzieri | `SheikhsFortuneScene.ts` |
+| Mobile | carte dei giochi più compatte sotto i 560 px | `ui/styles/lobby.css` |
+
+## Punto di ripresa — 13/11/2026: giochi bonus nelle slot, tempo di gioco
+
+Verifica: `tsc` pulito · test dei bonus verdi · prova a schermo dei tre bonus, compreso il gioco automatico.
+
+| Area | Cosa | File |
+|---|---|---|
+| Motore bonus | tre bonus nuovi, calcolati per intero al click come giri gratis e H&W (la vista recita). `RoundOutcome` ha `wheel`/`cascade`/`chests`; `rawPayout` li somma | `slots/engine/bonus.ts`, `types.ts`, `spin.ts` |
+| Lucky Sevens — Ruota | 3 Ruote (simbolo `R`, solo rulli 1-3-5) → 3 giri su 18 spicchi pesati. Il moltiplicatore MOLTIPLICA la vincita: vincita 0 finché non esce un moltiplicatore, il primo si applica alla puntata. NULLA = giro a vuoto (la vincita resta), +1 = un giro in più, STOP = chiude tenendo il vinto. Rimonta: dopo NULLA/×1/×2 il giro seguente pesa ×4 i ×5+ e ×0,4 gli scarsi e lo STOP. Freno dopo ×10, tetto 100× la puntata, max 8 giri. Spicchio ALTRO GIRO su due righe. Pesi ritoccati perché paghi davvero (non più ~90% di NULLA/×1/×2): media ~17× la puntata, 1 giro su ~200 |  `machines/goldenOasis.ts` (`GO_WHEEL`), `view/wheelBonus.ts` |
+| Hollywood Nights — Cascata | 3/4/5 Biglietti (`B`) → 10/15/20 giri. Le vincite esplodono, i simboli cadono e quelli nuovi arrivano dalla striscia sopra; ogni caduta e ogni griglia nuova consumano un giro. Moltiplicatore ×1→×2→×3→×5→×10 per cascata, NON torna a ×1 sulla griglia nuova (`keepMultiplier`). La cascata usa le strisce dei giri gratis (più wild, più vincite). Un solo Biglietto sul rullo centrale, in una striscia lunga il triplo: +5 giri (`retriggerSpins`), al massimo 2 volte, ~1 bonus su 5; il Biglietto poi esplode. Niente Ciak. 1 giro su ~205. Le cornici vincenti del giro base si spengono prima del bonus | `machines/desertFalcon.ts` (`DF_CASCADE`), `view/cascadeBonus.ts` |
+| Diamond Royale — Forzieri | 4+ Forzieri (`F`) → 5 forzieri con moltiplicatori tutti diversi (×1…×50), tabella più ricca con 5 e 6+. Il premio è deciso al click e va al forziere toccato (sono equivalenti). Frequenze invertite su richiesta perché i Forzieri pagano molto meno dell'H&W: Forzieri 1/~143, H&W 1/~171 | `machines/sheikhsFortune.ts` (`SF_CHESTS`), `view/chestBonus.ts` |
+| RTP | tabelle premi IDENTICHE; i bonus sono stati pagati cambiando solo la composizione dei rulli (ricerche a griglia con gli script di taratura). L'H&W è sensibilissimo alla densità di monete: 1 moneta in più per rullo lo porta da 1/150 a 1/50 | `machines/*.ts` |
+| Grafica | ruota con cerchione, lampadine a inseguimento, lancetta che scatta sui pioli, NULLA e STOP in verticale; forzieri frontali senza ombra; disegni in `art/bonusArt.ts` (materiali, niente illustrazioni). La macchina è un gruppo unico con perno al centro (`SlotScene.machine`): la ruota la gira come una carta, i forzieri la spostano in alto rimpicciolita | `art/bonusArt.ts`, `view/bonusStage.ts`, `SlotScene.ts` |
+| Simboli | `R` ruota in miniatura (nastro RUOTA/WHEEL), `B` biglietti (nastro CASCATA/TUMBLE), `F` forziere. I nastri tradotti hanno la lingua nella chiave della cache | `art/slotSymbols.ts` |
+| Suspense | quando manca UN simbolo (scatter o bonus) il rullo rallenta a vista (1,6 s) e frena piano; anche i rulli dopo rallentano | `SlotScene.playSpin`, `ReelView.slowTo` |
+| Hold & Win | mini-rulli più lenti, a onda (colonna e riga), nastro più lungo, lampo d'oro all'arrivo; il rimescolo non mostra più simboli bonus | `SlotScene.playHoldAndWin` |
+| Presentazione | nuovo interruttore "bonus speciali più frequenti"; la nota del gruppo sta sotto l'ultima riga e gli interruttori restano a destra | `demo.ts`, `SettingsModal.ts`, `shell.css` |
+| Profilo | tempo di gioco (pagina visibile, salvato ogni 15 s) in `profile.playSeconds` | `state/playTime.ts`, `ProfileModal.ts` |
+| Regolamento | sezione «Giochi bonus: come funzionano» con i passaggi numerati ed esempi; probabilità di ogni spicchio della ruota | `SlotTheme.bonusGuide`, scene delle tre slot |
+| Test | `tests/slotBonus.test.ts` (regole di ruota, cascata, forzieri) · `slotDemo.test.ts` (presentazione dei bonus) | `tests/` |
+
+Trappola: `GO.slot.want = (o) => !!o.wheel` (solo sviluppo) forza un bonus per collaudarlo a schermo.
+
+## Punto di ripresa — 12/11/2026 (pomeriggio): navigazione e vincita minima
+
+| Area | Cosa | File |
+|---|---|---|
+| Tasto Indietro | menu, sala e gioco sono voci della cronologia del browser: Indietro torna alla schermata precedente invece di chiudere il sito; con il tutorial aperto esce dal gioco | `ui/Shell.ts`, `Modal.ts`, `Tutorial.ts` |
+| Cambi di pagina | home ↔ sala sotto un velo DOM leggero (prima l'incrocio di due schermate bloccava fino a 1 s); ingresso e uscita dai giochi restano con la fiche | `ui/dom/PageVeil.ts`, `SceneManager.ts` |
+| Vincita minima | una giocata vincente paga almeno 0,01 € (`payoutCents`); sopra il mezzo centesimo l'arrotondamento è quello di prima | `slots/engine/spin.ts`, `tests/minWin.test.ts` |
+| README | scopo e funzionamento del progetto | `README.md` |
+
 ## Punto di ripresa — 12/11/2026: richieste del committente dopo la pubblicazione
 
 Verifica: `tsc` pulito · **474/474 test** (slot RTP compreso) · prova a schermo di video poker e Golden Chip.

@@ -121,6 +121,140 @@ export interface HoldAndWinRule {
   jackpots: readonly JackpotDef[];
 }
 
+// ─────────────────────────────────────────────── BONUS INTERNI
+
+/**
+ * Uno spicchio della ruota della fortuna. `mult` moltiplica per `value` la
+ * vincita accumulata; `blank` ("NULLA") non vince niente in quel giro, ma
+ * la vincita resta; `spin` regala un giro di ruota in piu'; `stop` chiude
+ * la ruota e fa perdere i giri rimasti (si tiene quanto gia' vinto).
+ */
+export interface WheelSegment {
+  kind: 'mult' | 'blank' | 'spin' | 'stop';
+  value: number;
+  /** Peso nell'estrazione: gli spicchi NON sono equiprobabili. */
+  weight: number;
+  /**
+   * Peso nel PRIMO giro, quasi uniforme (i premi grandi restano un po' piu'
+   * rari). Assente = `weight`. Dal secondo giro contano `weight`, il freno e
+   * la rimonta, cioe' quello che e' uscito prima.
+   */
+  first?: number;
+}
+
+/** Ruota della fortuna: 3 simboli ruota innescano `spins` giri di ruota. */
+export interface WheelRule {
+  symbol: SymId;
+  trigger: number;
+  spins: number;
+  /** Tetto ai giri totali, "+1" compresi: nessuna sessione infinita. */
+  maxSpins: number;
+  /** Spicchi in ordine di disegno, in senso orario dalla lancetta. */
+  segments: readonly WheelSegment[];
+  /**
+   * Freno ai premi alti: dopo uno spicchio da `highFrom`× in su, i pesi di
+   * tutti gli spicchi da `highFrom`× in su si moltiplicano per `highDamp`.
+   */
+  highFrom: number;
+  highDamp: number;
+  /** Tetto al moltiplicatore accumulato (vincita massima della ruota, in puntate). */
+  maxTotal: number;
+  /**
+   * Rimonta: dopo un giro scarso (NULLA o moltiplicatore fino a `lowUpTo`),
+   * nel giro successivo i moltiplicatori da `boostFrom` in su pesano
+   * `boostHigh` volte, e NULLA e i moltiplicatori bassi `boostLow` volte.
+   */
+  lowUpTo: number;
+  boostFrom: number;
+  boostHigh: number;
+  boostLow: number;
+}
+
+export interface WheelOutcome {
+  /** Un elemento per giro di ruota: spicchio uscito, totale e giri rimasti dopo. */
+  spins: readonly { segment: number; total: number; left: number }[];
+  /** Moltiplicatore accumulato (prodotto degli spicchi, parte da 1). */
+  total: number;
+  payout: number;
+}
+
+/**
+ * Bonus a cascata: 3+ simboli bonus danno N giri speciali. Le combinazioni
+ * vincenti esplodono, i simboli sopra cadono e dall'alto ne arrivano di
+ * nuovi. Ogni caduta e ogni giro nuovo consumano un giro; il moltiplicatore
+ * sale a ogni cascata e, a griglia nuova, torna al primo gradino (o scende di
+ * uno solo con `stepBack`).
+ */
+export interface CascadeRule {
+  symbol: SymId;
+  /** Conteggio simboli bonus → giri assegnati. */
+  spins: Readonly<Record<number, number>>;
+  /** Moltiplicatore per cascata consecutiva: il giro nuovo usa ladder[0]. */
+  ladder: readonly number[];
+  /** Strisce proprie della cascata (es. piu' wild). Assenti = quelle del gioco base. */
+  strips?: readonly (readonly SymId[])[];
+  /**
+   * Un giro senza vincite non riporta il moltiplicatore a ×1: lo fa scendere
+   * di un solo gradino (da ×10 a ×5, da ×5 a ×3...).
+   */
+  stepBack?: boolean;
+  /** Il simbolo bonus dentro la cascata aggiunge giri (raro). 0 = mai. */
+  retriggerSpins: number;
+  /** Quante volte al massimo puo' aggiungere giri in una cascata. */
+  retriggerCap: number;
+}
+
+export interface CascadeStep {
+  /** `fresh` = griglia nuova dai rulli; `drop` = caduta dopo un'esplosione. */
+  kind: 'fresh' | 'drop';
+  grid: Grid;
+  /** Solo `fresh`: posizione dei rulli. */
+  stops?: readonly number[];
+  wins: readonly WinLine[];
+  multiplier: number;
+  payout: number;
+  /** Giri rimasti DOPO questo passo. */
+  left: number;
+  /** Celle che esplodono alla fine di questo passo (unione delle vincite). */
+  explode: readonly (readonly [number, number])[];
+  /** Giri aggiunti in questo passo da un simbolo bonus (0 = nessuno). */
+  added: number;
+  /** Celle dei simboli bonus che hanno aggiunto giri (per la vista). */
+  bonusCells: readonly (readonly [number, number])[];
+}
+
+export interface CascadeOutcome {
+  spins: number;
+  steps: readonly CascadeStep[];
+  payout: number;
+}
+
+/** Tabella dei forzieri per un numero minimo di simboli. */
+export interface ChestTable {
+  min: number;
+  values: readonly number[];
+  weights: readonly number[];
+}
+
+/** Forzieri: 5+ simboli forziere aprono una scelta fra `chests` forzieri. */
+export interface ChestRule {
+  symbol: SymId;
+  trigger: number;
+  chests: number;
+  /** Piu' simboli = tabella piu' ricca. Si usa quella col `min` piu' alto <= conteggio. */
+  tables: readonly ChestTable[];
+}
+
+export interface ChestOutcome {
+  /** Simboli forziere sui rulli. */
+  count: number;
+  /** Moltiplicatore del forziere che il giocatore apre (gia' deciso). */
+  prize: number;
+  /** Il contenuto degli altri forzieri, mostrato dopo l'apertura. */
+  others: readonly number[];
+  payout: number;
+}
+
 export interface MachineDef {
   id: string;
   /** Nome leggibile, per i log e i test. */
@@ -135,6 +269,9 @@ export interface MachineDef {
   wild?: WildRule;
   freeSpins?: FreeSpinRule;
   holdAndWin?: HoldAndWinRule;
+  wheel?: WheelRule;
+  cascade?: CascadeRule;
+  chests?: ChestRule;
   /** RTP dichiarato in lobby. Il test di simulazione verifica che sia vero. */
   rtpTarget: number;
   /**
@@ -187,6 +324,9 @@ export interface RoundOutcome {
   base: SpinOutcome;
   free: readonly SpinOutcome[];
   holdAndWin?: HoldAndWinOutcome;
+  wheel?: WheelOutcome;
+  cascade?: CascadeOutcome;
+  chests?: ChestOutcome;
   /** Vincita totale della giocata, in fiche. */
   totalPayout: number;
   bet: number;

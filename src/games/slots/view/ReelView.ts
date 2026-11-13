@@ -58,6 +58,16 @@ export class ReelView extends Container {
   /** Velocita' a regime in celle/secondo. */
   maxSpeed = 17;
 
+  /**
+   * Suspense: il rullo ancora in corsa rallenta fino a `speed` celle al
+   * secondo in `duration` secondi, senza fermarsi. Il simbolo che potrebbe
+   * arrivare si "vede passare" prima dell'arresto.
+   */
+  slowTo(speed: number, duration: number): void {
+    if (this.state !== 'spinning') return;
+    gsap.to(this, { speed, duration, ease: 'power2.out' });
+  }
+
   constructor(private o: ReelViewOptions) {
     super();
     this.label = `reel-${o.index}`;
@@ -181,6 +191,53 @@ export class ReelView extends Container {
         });
       };
       // Uno stop chiesto durante il "caricamento" aspetta che il rullo giri.
+      if (this.state === 'starting') {
+        const wait = () => (this.state === 'starting' ? requestAnimationFrame(wait) : go());
+        wait();
+      } else go();
+    });
+  }
+
+  /**
+   * Suspense: UNA sola frenata continua, lunga `duration` secondi, dalla
+   * velocita' piena fino allo stop. Il salto di posizione avviene subito,
+   * mentre il rullo corre ancora sfocato: poi la velocita' cala senza scatti
+   * (la stessa di partenza, quindi niente strappo) e si posa con un piccolo
+   * rimbalzo. `hurry` accelera la fine se il giocatore chiede l'arresto rapido.
+   */
+  teaseStop(stop: number, duration: number, hurry: () => boolean = () => false): Promise<void> {
+    return new Promise((resolve) => {
+      const go = () => {
+        gsap.killTweensOf(this, 'speed');
+        // back.out(0.6) parte con velocita' 3,6 × (distanza / durata): la
+        // distanza e' scelta perche' coincida con la velocita' attuale.
+        const v0 = Math.max(this.speed, 4);
+        const cells = Math.max(3, Math.round((v0 * duration) / 3.6));
+        const frac = this.pos - Math.floor(this.pos);
+        this.pos = stop + cells + frac;
+        this.state = 'stopping';
+        let last = this.pos;
+        const tw: gsap.core.Tween = gsap.to(this, {
+          pos: stop,
+          duration,
+          ease: 'back.out(0.6)',
+          onUpdate: () => {
+            const dt = Math.max(1 / 240, gsap.ticker.deltaRatio() / 60);
+            this.speed = Math.abs(last - this.pos) / dt;
+            last = this.pos;
+            if (hurry() && tw.timeScale() === 1) tw.timeScale(5);
+          },
+          onComplete: () => {
+            this.pos = stop;
+            this.speed = 0;
+            this.state = 'idle';
+            this.stopTween = null;
+            this.layout();
+            resolve();
+          },
+        });
+        this.stopTween = tw;
+      };
       if (this.state === 'starting') {
         const wait = () => (this.state === 'starting' ? requestAnimationFrame(wait) : go());
         wait();

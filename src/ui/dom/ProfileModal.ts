@@ -13,7 +13,8 @@ import { showModal } from './Modal';
 import { getState, wallet, progression, actions } from '@/state/store';
 import { tierFor, tierProgress, nextTier, VIP_TIERS } from '@/state/progression';
 import { formatMoney } from '@/state/wallet';
-import { t, num } from '@/i18n';
+import { t, num, getLanguage } from '@/i18n';
+import { formatPlayTime } from '@/state/playTime';
 import type { TranslationKey } from '@/i18n';
 import { PALETTE, css } from '@/art/palette';
 import { ACHIEVEMENTS, ACHIEVEMENT_COUNT } from '@/state/achievements';
@@ -88,6 +89,7 @@ export function openProfile(): void {
     statCell('profile.totalWon', formatMoney(w.totalWon)),
     statCell('profile.biggestWin', formatMoney(w.biggestWin)),
     statCell('profile.spins', num(w.spins)),
+    statCell('profile.playTime', formatPlayTime(getState().profile.playSeconds ?? 0, getLanguage())),
     statCell(
       'profile.netResult',
       `${net >= 0 ? '+' : '−'}${formatMoney(Math.abs(net))}`,

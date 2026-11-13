@@ -162,11 +162,11 @@ export function openSettings(onLanguageChanged?: () => void): void {
         'settings.demo',
         fieldRow('settings.demoBigWins', toggle(s.demoBigWins, (v) => actions.updateSettings({ demoBigWins: v }))),
         fieldRow('settings.demoFreeSpins', toggle(s.demoFreeSpins, (v) => actions.updateSettings({ demoFreeSpins: v }))),
-        fieldRow(
-          'settings.demoHoldWin',
-          toggle(s.demoHoldWin, (v) => actions.updateSettings({ demoHoldWin: v })),
-          'settings.demoHint'
-        )
+        fieldRow('settings.demoHoldWin', toggle(s.demoHoldWin, (v) => actions.updateSettings({ demoHoldWin: v }))),
+        fieldRow('settings.demoBonus', toggle(s.demoBonus, (v) => actions.updateSettings({ demoBonus: v }))),
+        // La spiegazione vale per tutti gli interruttori del gruppo: sta
+        // sotto l'ultima riga, non dentro una di esse.
+        el('p', { class: 'go-field__hint go-field__note', i18n: 'settings.demoHint' })
       )
     );
   }

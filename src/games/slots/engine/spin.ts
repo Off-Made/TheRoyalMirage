@@ -22,6 +22,8 @@ import type {
   WinLine,
 } from './types';
 import { evaluateLines, evaluateScatter, evaluateWays, expandWilds } from './evaluate';
+import { countSymbol, runCascade, runChests, runWheel } from './bonus';
+import type { CascadeOutcome, ChestOutcome, WheelOutcome } from './types';
 
 /** Estrae gli stop e costruisce la griglia visibile. */
 export function spinGrid(
@@ -149,8 +151,40 @@ export function playRound(m: MachineDef, bet: number, rng: Rng): RoundOutcome {
     if (coins >= hw.trigger) holdAndWin = runHoldAndWin(m, base.coinValues, bet, rng);
   }
 
-  const raw = base.payout + free.reduce((s, f) => s + f.payout, 0) + (holdAndWin?.payout ?? 0);
-  return { base, free, holdAndWin, totalPayout: payoutCents(raw), bet };
+  // Bonus interni: contano i simboli sulla griglia ORIGINALE del giro base
+  // (un wild espanso non copre un simbolo bonus atterrato sotto di lui).
+  let wheel: WheelOutcome | undefined;
+  if (m.wheel && countSymbol(grid, m.wheel.symbol) >= m.wheel.trigger) wheel = runWheel(m.wheel, bet, rng);
+
+  let cascade: CascadeOutcome | undefined;
+  if (m.cascade) {
+    const n = countSymbol(grid, m.cascade.symbol);
+    const award = bonusAtMost(m.cascade.spins, n);
+    if (award > 0) cascade = runCascade(m, m.cascade, award, bet, rng);
+  }
+
+  let chests: ChestOutcome | undefined;
+  if (m.chests) {
+    const n = countSymbol(grid, m.chests.symbol);
+    if (n >= m.chests.trigger) chests = runChests(m.chests, n, bet, rng);
+  }
+
+  const out: RoundOutcome = { base, free, holdAndWin, wheel, cascade, chests, totalPayout: 0, bet };
+  return { ...out, totalPayout: payoutCents(rawPayout(out)) };
+}
+
+/** Valore della tabella per il conteggio piu' alto <= n; 0 se nessuno. */
+function bonusAtMost(table: Readonly<Record<number, number>>, n: number): number {
+  let best = 0;
+  let bestKey = -1;
+  for (const [k, v] of Object.entries(table)) {
+    const kk = Number(k);
+    if (kk <= n && kk > bestKey) {
+      bestKey = kk;
+      best = v;
+    }
+  }
+  return best;
 }
 
 /**
@@ -172,5 +206,12 @@ export function payoutCents(raw: number): number {
 
 /** Payout esatto (non arrotondato), per le simulazioni RTP. */
 export function rawPayout(r: RoundOutcome): number {
-  return r.base.payout + r.free.reduce((s, f) => s + f.payout, 0) + (r.holdAndWin?.payout ?? 0);
+  return (
+    r.base.payout +
+    r.free.reduce((s, f) => s + f.payout, 0) +
+    (r.holdAndWin?.payout ?? 0) +
+    (r.wheel?.payout ?? 0) +
+    (r.cascade?.payout ?? 0) +
+    (r.chests?.payout ?? 0)
+  );
 }

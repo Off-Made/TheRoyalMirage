@@ -20,15 +20,26 @@ import { PALETTE, css, rgba } from './palette';
 import { goldFill, setGlow, clearGlow, roundRectPath } from './materials';
 import { iconUrl, loadedImage, type IconName } from './images';
 import { FONT_STACK } from '@/core/fonts';
+import { getLanguage } from '@/i18n';
+import { drawWheelSymbol, drawChestSymbol } from './bonusArt';
 
 export const SYMBOL_SIZE = 240;
 
 type Tone = { light: number; core: number; deep: number };
 
+/** Testo del nastro: fisso (WILD, BONUS) o tradotto (RUOTA / WHEEL). */
+type RibbonText = string | { it: string; en: string };
+
 type SymbolSpec =
-  | { kind: 'icon'; icon: IconName; tone: Tone; ribbon?: string; scale?: number }
-  | { kind: 'type'; text: string; tone: Tone; ribbon?: string; size?: number }
-  | { kind: 'bar'; tone: Tone };
+  | { kind: 'icon'; icon: IconName; tone: Tone; ribbon?: RibbonText; scale?: number }
+  | { kind: 'type'; text: string; tone: Tone; ribbon?: RibbonText; size?: number }
+  | { kind: 'bar'; tone: Tone }
+  /** Simboli dei bonus: composizione disegnata in `bonusArt.ts`. */
+  | { kind: 'custom'; draw: (ctx: CanvasRenderingContext2D, S: number) => void; ribbon?: RibbonText };
+
+function ribbonText(r: RibbonText): string {
+  return typeof r === 'string' ? r : r[getLanguage()];
+}
 
 const GOLD: Tone = { light: PALETTE.gold.hot, core: PALETTE.gold.core, deep: PALETTE.gold.deep };
 const RED: Tone = PALETTE.red;
@@ -52,6 +63,7 @@ const LUCKY_SEVENS: Record<string, SymbolSpec> = {
   Q: { kind: 'icon', icon: 'tangerine', tone: AMBER, scale: 0.68 },
   J: { kind: 'icon', icon: 'lemon', tone: GOLD, scale: 0.66 },
   T: { kind: 'icon', icon: 'cherries', tone: PINK, scale: 0.68 },
+  R: { kind: 'custom', draw: drawWheelSymbol, ribbon: { it: 'RUOTA', en: 'WHEEL' } },
 };
 
 /** Hollywood Nights: la prima di gala. */
@@ -67,6 +79,7 @@ const HOLLYWOOD: Record<string, SymbolSpec> = {
   Q: { kind: 'type', text: 'Q', tone: PINK },
   J: { kind: 'type', text: 'J', tone: SAPPHIRE },
   T: { kind: 'type', text: '10', tone: EMERALD, size: 0.5 },
+  B: { kind: 'icon', icon: 'admission-tickets', tone: PINK, ribbon: { it: 'CASCATA', en: 'TUMBLE' } },
 };
 
 /** Diamond Royale: la sala dei grandi giocatori. */
@@ -82,6 +95,7 @@ const DIAMOND_ROYALE: Record<string, SymbolSpec> = {
   Q: { kind: 'type', text: 'Q', tone: VIOLET },
   J: { kind: 'type', text: 'J', tone: SAPPHIRE },
   T: { kind: 'type', text: '10', tone: EMERALD, size: 0.5 },
+  F: { kind: 'custom', draw: drawChestSymbol },
 };
 
 const MACHINES = {
@@ -139,7 +153,8 @@ function metalText(ctx: CanvasRenderingContext2D, text: string, cx: number, cy: 
 }
 
 /** Nastro d'oro con la funzione del simbolo (WILD, BONUS). */
-function ribbon(ctx: CanvasRenderingContext2D, S: number, label: string): void {
+function ribbon(ctx: CanvasRenderingContext2D, S: number, text: RibbonText): void {
+  const label = ribbonText(text);
   const w = S * 0.74;
   const h = S * 0.2;
   const x = (S - w) / 2;
@@ -179,6 +194,18 @@ function wildPlate(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 }
 
 function drawSpec(ctx: CanvasRenderingContext2D, s: SymbolSpec, S: number): void {
+  if (s.kind === 'custom') {
+    if (s.ribbon) {
+      // Con il nastro il disegno sale e si rimpicciolisce, come le icone.
+      ctx.save();
+      ctx.translate(S * 0.17, S * 0.03);
+      ctx.scale(0.66, 0.66);
+      s.draw(ctx, S);
+      ctx.restore();
+      ribbon(ctx, S, s.ribbon);
+    } else s.draw(ctx, S);
+    return;
+  }
   if (s.kind === 'icon') {
     halo(ctx, S, s.tone);
     const img = loadedImage(iconUrl(s.icon));
@@ -229,7 +256,10 @@ function drawSpec(ctx: CanvasRenderingContext2D, s: SymbolSpec, S: number): void
 
 /** Texture del simbolo `id` della macchina (cotta una volta, poi in cache). */
 export function slotSymbolTexture(machine: SlotArtId, id: string): Texture {
-  return bake(`sym/${machine}/${id}`, SYMBOL_SIZE, SYMBOL_SIZE, (ctx, w) => drawSlotSymbol(machine, ctx, id, w));
+  // I nastri tradotti cambiano con la lingua: la chiave della cache la include.
+  const spec = MACHINES[machine][id as keyof (typeof MACHINES)[typeof machine]] as SymbolSpec | undefined;
+  const lang = spec && 'ribbon' in spec && spec.ribbon && typeof spec.ribbon !== 'string' ? `/${getLanguage()}` : '';
+  return bake(`sym/${machine}/${id}${lang}`, SYMBOL_SIZE, SYMBOL_SIZE, (ctx, w) => drawSlotSymbol(machine, ctx, id, w));
 }
 
 /** Disegno diretto su un contesto (tabella dei pagamenti in DOM). */

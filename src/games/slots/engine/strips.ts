@@ -44,3 +44,31 @@ export function buildStrip(counts: StripCounts, seed: number, stack: Readonly<Re
   }
   return blocks.flat();
 }
+
+/**
+ * Allontana le copie di un simbolo che stanno a meno di `gap` posizioni l'una
+ * dall'altra (es. due simboli bonus nella stessa finestra visibile), scambiando
+ * la seconda con la posizione piu' lontana libera. Deterministica.
+ */
+export function spreadApart(strip: readonly SymId[], id: SymId, gap: number): SymId[] {
+  const s = strip.slice();
+  const n = s.length;
+  const dist = (a: number, b: number) => Math.min((a - b + n) % n, (b - a + n) % n);
+  const ok = (i: number) => s.every((x, j) => j === i || x !== id || dist(i, j) >= gap);
+  for (let i = 0; i < n; i++) {
+    if (s[i] !== id || ok(i)) continue;
+    // Il posto piu' lontano da tutte le altre copie, dove non c'e' gia' il simbolo.
+    let best = -1;
+    let bestD = -1;
+    for (let k = 0; k < n; k++) {
+      if (s[k] === id) continue;
+      const d = Math.min(...s.map((x, j) => (x === id && j !== i ? dist(k, j) : n)));
+      if (d > bestD) {
+        bestD = d;
+        best = k;
+      }
+    }
+    if (best >= 0) [s[i], s[best]] = [s[best]!, s[i]!];
+  }
+  return s;
+}

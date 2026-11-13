@@ -253,6 +253,14 @@
   display: grid;
   gap: 2px;
   min-width: 0;
+  /* Il testo prende tutto lo spazio: l'interruttore resta sempre a destra,
+     anche quando l'etichetta va a capo. */
+  flex: 1 1 auto;
+}
+/* Nota di un gruppo intero, sotto l'ultima riga (non dentro una riga). */
+.go-field__note {
+  margin: 0;
+  padding: var(--sp-3) 0 0;
 }
 .go-field__label {
   font-weight: 600;

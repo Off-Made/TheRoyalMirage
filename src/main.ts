@@ -23,6 +23,7 @@ import { loadFonts } from './core/fonts';
 import { AtmosphereScene } from './scenes/AtmosphereScene';
 import { shell } from './ui/Shell';
 import { setFpsMeter } from './ui/dom/FpsMeter';
+import { installPlayTimeTracker } from './state/playTime';
 import './ui/styles/hud.css';
 import { setLanguage } from './i18n';
 import { gsap } from 'gsap';
@@ -94,6 +95,7 @@ async function boot(): Promise<void> {
     // a un canvas che sta già disegnando, non a un rettangolo nero.
     status('Apertura della sala');
     shell.install();
+    installPlayTimeTracker();
 
     status('Pronto');
     // Un frame di respiro perche' la prima immagine sia gia' sullo schermo

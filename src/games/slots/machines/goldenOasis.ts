@@ -11,8 +11,8 @@
  * Per ritoccarlo si cambiano SOLO le frequenze qui sotto.
  */
 
-import type { MachineDef, Payline, SymbolDef } from '../engine/types';
-import { buildStrip, type StripCounts } from '../engine/strips';
+import type { MachineDef, Payline, SymbolDef, WheelRule, WheelSegment } from '../engine/types';
+import { buildStrip, spreadApart, type StripCounts } from '../engine/strips';
 import { PALETTE } from '@/art/palette';
 
 export const GO_SYMBOLS: readonly SymbolDef[] = [
@@ -36,7 +36,61 @@ export const GO_SYMBOLS: readonly SymbolDef[] = [
   { id: 'Q', label: 'Mandarino', glyph: '🍊', tint: PALETTE.accent.violet.light, pays: { 3: 2.1, 4: 11, 5: 81 } },
   { id: 'J', label: 'Limone', glyph: '🍋', tint: PALETTE.accent.sapphire.light, pays: { 3: 1.7, 4: 9, 5: 65 } },
   { id: 'T', label: 'Ciliegie', glyph: '🍒', tint: PALETTE.gold.light, pays: { 3: 1.3, 4: 7, 5: 48 } },
+  // Non paga in combinazione: 3 Ruote (rulli 1, 3 e 5) aprono la Ruota della fortuna.
+  { id: 'R', label: 'Ruota', glyph: '🎡', tint: PALETTE.gold.core },
 ];
+
+/**
+ * La Ruota della fortuna: 18 spicchi, disegnati in quest'ordine in senso
+ * orario a partire dalla lancetta. I pesi NON sono uguali: gli spicchi
+ * grandi hanno meno probabilita' (lo dice anche il regolamento in sala).
+ *
+ * I moltiplicatori MOLTIPLICANO la vincita accumulata (il primo si applica
+ * alla puntata). Al PRIMO giro gli spicchi sono quasi equiprobabili (`first`,
+ * i grandi un po' meno); dai giri dopo contano `weight` e quello che e'
+ * uscito: dopo un giro scarso (NULLA, ×1, ×2) scatta la RIMONTA (i ×5 e oltre
+ * pesano il doppio, scarsi e STOP meno), dopo un ×10 o piu' il FRENO. Media
+ * di un bonus ≈ 18 volte la puntata, tetto 100 volte, 1 giro su ~225
+ * (Ruote 3-2-3 sui rulli 1-3-5, mai due nella stessa finestra).
+ */
+export const GO_WHEEL_SEGMENTS: readonly WheelSegment[] = [
+  { kind: 'mult', value: 50, weight: 0.05, first: 0.3 },
+  { kind: 'mult', value: 2, weight: 26 / 3, first: 1 },
+  { kind: 'mult', value: 10, weight: 0.5, first: 0.8 },
+  { kind: 'mult', value: 1, weight: 21, first: 1 },
+  { kind: 'mult', value: 5, weight: 5 / 3, first: 1 },
+  { kind: 'stop', value: 0, weight: 8, first: 1 },
+  { kind: 'mult', value: 20, weight: 0.125, first: 0.5 },
+  { kind: 'mult', value: 2, weight: 26 / 3, first: 1 },
+  { kind: 'mult', value: 5, weight: 5 / 3, first: 1 },
+  { kind: 'mult', value: 15, weight: 0.2, first: 0.6 },
+  { kind: 'mult', value: 1, weight: 21, first: 1 },
+  { kind: 'spin', value: 0, weight: 4, first: 1 },
+  { kind: 'mult', value: 10, weight: 0.5, first: 0.8 },
+  { kind: 'mult', value: 2, weight: 26 / 3, first: 1 },
+  { kind: 'blank', value: 0, weight: 7, first: 1 },
+  { kind: 'mult', value: 5, weight: 5 / 3, first: 1 },
+  { kind: 'mult', value: 20, weight: 0.125, first: 0.5 },
+  { kind: 'mult', value: 15, weight: 0.2, first: 0.6 },
+];
+
+export const GO_WHEEL: WheelRule = {
+  symbol: 'R',
+  trigger: 3,
+  spins: 3,
+  maxSpins: 8,
+  segments: GO_WHEEL_SEGMENTS,
+  // Dopo un ×10 o piu', i premi alti diventano molto meno probabili.
+  highFrom: 10,
+  highDamp: 0.25,
+  // Vincita massima della ruota: 100 volte la puntata.
+  maxTotal: 100,
+  // Rimonta dopo un giro scarso (NULLA, ×1, ×2): ×5 e oltre ×2, scarsi e STOP ×0,6.
+  lowUpTo: 2,
+  boostFrom: 5,
+  boostHigh: 2,
+  boostLow: 0.6,
+};
 
 /** Le 20 linee, una riga per rullo (0 = alto, 1 = centro, 2 = basso). */
 export const GO_PAYLINES: readonly Payline[] = [
@@ -53,11 +107,11 @@ export const GO_PAYLINES: readonly Payline[] = [
  * rare ma piu' ricche: i premi sono stati alzati del 28% per tenere l'RTP.
  */
 export const GO_BASE_COUNTS: readonly StripCounts[] = [
-  { S: 1, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
+  { R: 3, S: 1, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
   { W: 1, S: 2, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
-  { W: 1, S: 1, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
+  { W: 1, R: 2, S: 1, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
   { W: 1, S: 2, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
-  { S: 1, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
+  { R: 3, S: 1, F: 3, C: 4, O: 4, D: 4, G: 4, A: 5, K: 5, Q: 5, J: 5, T: 5 },
 ];
 
 /** Nei giri gratis: piu' Palazzi, meno carte basse. */
@@ -78,7 +132,8 @@ export function makeGoldenOasis(
     name: 'Lucky Sevens',
     reels: 5,
     rows: 3,
-    strips: base.map((c, i) => buildStrip(c, 0x60a5 + i * 977)),
+    // Due Ruote sullo stesso rullo non devono mai stare nella stessa finestra.
+    strips: base.map((c, i) => spreadApart(buildStrip(c, 0x60a5 + i * 977), 'R', 3)),
     symbols: GO_SYMBOLS,
     paylines: GO_PAYLINES,
     evalMode: 'lines',
@@ -89,6 +144,7 @@ export function makeGoldenOasis(
       retrigger: true,
       cap: 60,
     },
+    wheel: GO_WHEEL,
     rtpTarget: 96.2,
     betDivisor: 20,
   };

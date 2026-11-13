@@ -8,7 +8,7 @@
  */
 
 import { SlotScene } from '@/games/slots/view/SlotScene';
-import { DESERT_FALCON, DF_LADDER } from '@/games/slots/machines/desertFalcon';
+import { DESERT_FALCON, DF_LADDER, DF_CASCADE } from '@/games/slots/machines/desertFalcon';
 import { slotSymbolTexture, drawSlotSymbol, slotSymbolImages } from '@/art/slotSymbols';
 import { PALETTE } from '@/art/palette';
 import { defineStrings } from '@/games/common/strings';
@@ -21,12 +21,30 @@ const s = defineStrings({
     wild: 'Statuetta d’Oro (WILD) — compare sui rulli 2, 3, 4 e 5 e sostituisce ogni simbolo tranne il Ciak.',
     scatter: 'Ciak (BONUS) — paga ovunque sulla puntata totale. 3, 4 o 5 Ciak assegnano 8, 12 o 16 giri gratis.',
     free: 'Giri gratis con moltiplicatore progressivo — ogni giro vale più del precedente: {ladder}, poi ×10 fino alla fine. Le Statuette sono molto più frequenti e nuovi Ciak aggiungono altri giri.',
+    cascade: 'Cascata — 3, 4 o 5 Biglietti ovunque danno {spins} giri a cascata, con un moltiplicatore che sale a ogni cascata ({ladder}) e, se non vinci, scende di un solo gradino. I dettagli sono più sotto, in «Giochi bonus».',
+    gTitle: 'Cascata',
+    g1: 'Come si attiva: 3, 4 o 5 simboli BIGLIETTO (nastro “CASCATA”) ovunque sui rulli danno {spins} giri a cascata.',
+    g2: 'A ogni giro la griglia si riempie di simboli che piovono dall’alto. Le combinazioni pagano come nel gioco normale: stessa tabella, 1024 modi.',
+    g3: 'Le combinazioni vincenti si illuminano ed esplodono; i simboli rimasti cadono verso il basso e dall’alto ne entrano di nuovi. Può nascere un’altra vincita, e così via.',
+    g4: 'Ogni caduta consuma un giro. Se non c’è nessuna vincita, la griglia si rifà da capo: anche questo consuma un giro.',
+    g5: 'Moltiplicatore: parte da ×1 e sale a ogni cascata: {ladder}. Quando un giro non vince non torna a ×1: scende solo al gradino precedente (da ×10 a ×5, da ×5 a ×3...).',
+    g6: 'Esempio con 1 € puntato: una vincita da 0,40 € alla seconda cascata vale 0,40 € × 2 = 0,80 €; alla quarta vale × 5 = 2,00 €.',
+    g7: 'Raramente, sul rullo centrale, compare un BIGLIETTO: aggiunge 5 giri a cascata (al massimo 2 volte). Il totale della cascata si somma alla vincita del giro che l’ha aperta.',
   },
   en: {
     ways: '1024 ways to win — no paylines: a symbol pays when it lands on adjacent reels starting from the leftmost, in any row.',
     wild: 'Golden Statuette (WILD) — appears on reels 2, 3, 4 and 5 and substitutes for every symbol except the Clapperboard.',
     scatter: 'Clapperboard (BONUS) — pays anywhere on the total bet. 3, 4 or 5 Clapperboards award 8, 12 or 16 free spins.',
     free: 'Free spins with a progressive multiplier — every spin is worth more than the last: {ladder}, then ×10 until the end. Statuettes land far more often and new Clapperboards award extra spins.',
+    cascade: 'Tumble — 3, 4 or 5 Tickets anywhere award {spins} tumble spins, with a multiplier that rises on every tumble ({ladder}) and, when you do not win, steps down only one level. Full details below, under “Bonus games”.',
+    gTitle: 'Tumble',
+    g1: 'How it starts: 3, 4 or 5 TICKET symbols (“TUMBLE” ribbon) anywhere on the reels award {spins} tumble spins.',
+    g2: 'On every spin the grid fills with symbols raining down from the top. Combinations pay as in the normal game: same paytable, 1024 ways.',
+    g3: 'Winning combinations light up and explode; the remaining symbols fall down and new ones drop in from the top. Another win can follow, and so on.',
+    g4: 'Every fall uses one spin. With no win at all, the grid is dealt afresh: that also uses one spin.',
+    g5: 'Multiplier: it starts at ×1 and rises on every tumble: {ladder}. When a spin does not win it does not go back to ×1: it only steps down one level (from ×10 to ×5, from ×5 to ×3...).',
+    g6: 'Example with a 1 € bet: a 0.40 € win on the second tumble is worth 0.40 € × 2 = 0.80 €; on the fourth it is worth × 5 = 2.00 €.',
+    g7: 'Rarely, on the middle reel, a TICKET shows up: it adds 5 tumble spins (at most twice). The tumble total adds to the spin that opened it.',
   },
 });
 
@@ -54,7 +72,18 @@ export class DesertFalconScene extends SlotScene {
         s('wild'),
         s('scatter'),
         s('free', { ladder: DF_LADDER.map((m) => `×${m}`).join(' → ') }),
+        s('cascade', {
+          spins: Object.values(DF_CASCADE.spins).join(' / '),
+          ladder: DF_CASCADE.ladder.map((m) => `×${m}`).join(' → '),
+        }),
       ],
+      bonusGuide: () => {
+        const vars = {
+          spins: Object.values(DF_CASCADE.spins).join(' / '),
+          ladder: DF_CASCADE.ladder.map((m) => `×${m}`).join(' → '),
+        };
+        return [{ title: s('gTitle'), steps: ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7'].map((k) => s(k as 'g1', vars)) }];
+      },
     });
   }
 

@@ -42,6 +42,12 @@ import { ReelView } from './ReelView';
 import { FRAME_CREST, frameTexture, reelBackTexture, windowSize, type FrameGeometry } from './frame';
 import { ss } from './strings';
 import type { TutorialStep } from '@/ui/dom/Tutorial';
+import { wait, type BonusStage } from './bonusStage';
+import { playWheel } from './wheelBonus';
+import { playCascade } from './cascadeBonus';
+import { playChests } from './chestBonus';
+
+export { wait };
 
 
 export interface SlotTheme {
@@ -78,6 +84,11 @@ export interface SlotTheme {
   accent?: { core: number; hot: number };
   /** Icone da decodificare prima di cuocere i simboli. */
   images?: readonly string[];
+  /**
+   * Guida passo passo dei giochi bonus, per la scheda «Vincite»: un titolo e
+   * i passaggi in ordine (come si attiva, come si gioca, quanto si vince).
+   */
+  bonusGuide?: () => { title: string; steps: string[] }[];
 }
 
 const LINE_COLORS = PAYLINE_COLORS;
@@ -99,8 +110,16 @@ const SPIN_T = {
   stop: 0.42,
   stopTurbo: 0.3,
   stopQuick: 0.15,
-  /** Attesa in piu' sul rullo "decisivo" con 2 scatter a terra. */
-  tease: 0.6,
+  /**
+   * Suspense sul rullo "decisivo" (un simbolo bonus o scatter in meno di
+   * quelli che servono): il rullo frena in un unico movimento continuo,
+   * lungo `tease` + `teaseStop` secondi (`ReelView.teaseStop`).
+   */
+  tease: 1.6,
+  teaseTurbo: 0.9,
+  teaseStop: 0.85,
+  /** Velocita' a cui scendono i rulli DOPO quello in suspense (celle/secondo, ×1,6). */
+  teaseSpeed: 6,
 } as const;
 
 
@@ -117,6 +136,12 @@ export class SlotScene extends GameScene {
   protected oy = 0;
   protected reelLayer = new Container();
   protected overlayLayer = new Container();
+  /**
+   * La macchina intera (alone, fondo, rulli, cornice) in un solo gruppo,
+   * con il perno al centro: i bonus la girano come una carta (ruota) o la
+   * spostano in alto rimpicciolita (forzieri).
+   */
+  protected machine = new Container();
   protected lineLayer = new Graphics();
   protected highlight = new Container();
   /** Valori delle monete Hold & Win visibili sulla griglia ferma. */
@@ -134,7 +159,10 @@ export class SlotScene extends GameScene {
   private roundBet = 0;
   /** Esito in corso, per pagarlo se si esce a meta'. */
   private pending: RoundOutcome | null = null;
-  private phase: 'idle' | 'spinning' | 'presenting' = 'idle';
+  private phase: 'idle' | 'spinning' | 'presenting' | 'bonus' = 'idle';
+  /** Bonus in attesa del pulsante (GIRA!, APRI): chi lo risolve. */
+  private pressResolve: (() => void) | null = null;
+  private pressEnabled: (() => boolean) | null = null;
   /** Arresto rapido richiesto (secondo click): le sottoclassi lo leggono nelle loro animazioni. */
   protected quick = false;
   private auto = false;
@@ -238,7 +266,13 @@ export class SlotScene extends GameScene {
 
     this.buildFreePanel(w);
 
-    this.world.addChild(halo, this.back, this.backFree, this.reelLayer, this.overlayLayer, this.frame, this.fsPanel);
+    this.machine.addChild(halo, this.back, this.backFree, this.reelLayer, this.overlayLayer, this.frame);
+    // Perno al centro della finestra: le posizioni dei figli non cambiano.
+    const mcx = this.ox + w / 2;
+    const mcy = this.oy + h / 2;
+    this.machine.pivot.set(mcx, mcy);
+    this.machine.position.set(mcx, mcy);
+    this.world.addChild(this.machine, this.fsPanel);
     // Un tocco sui rulli in movimento li ferma (o salta la presentazione),
     // come il secondo click su Gira. A rulli fermi non fa partire nulla:
     // un giro deve partire solo dal pulsante.
@@ -324,6 +358,16 @@ export class SlotScene extends GameScene {
   }
 
   private onSpinPressed(): void {
+    // Un bonus aspetta il suo pulsante (GIRA!, APRI): il pulsante e' suo.
+    if (this.pressResolve) {
+      this.pressBonus();
+      return;
+    }
+    if (this.phase === 'bonus') {
+      this.quick = true;
+      this.presenter.skip();
+      return;
+    }
     if (this.phase === 'spinning') {
       // Secondo click durante il giro = arresto rapido ("slam stop").
       this.quick = true;
@@ -370,7 +414,9 @@ export class SlotScene extends GameScene {
     await this.playSpin(outcome.base, 'base');
     if (this.disposed) return;
     paid += outcome.base.payout;
-    await this.showWins(outcome.base, bet, paid, outcome.free.length > 0 || !!outcome.holdAndWin);
+    const bonusFollows =
+      outcome.free.length > 0 || !!outcome.holdAndWin || !!outcome.wheel || !!outcome.cascade || !!outcome.chests;
+    await this.showWins(outcome.base, bet, paid, bonusFollows);
     if (this.disposed) return;
 
     if (outcome.free.length > 0) {
@@ -385,7 +431,103 @@ export class SlotScene extends GameScene {
       paid += outcome.holdAndWin.payout;
     }
 
+    // Bonus interni: ruota, cascata, forzieri. Prima si spengono le cornici
+    // delle vincite del giro base: resterebbero accese sopra il bonus.
+    if (outcome.wheel || outcome.cascade || outcome.chests) {
+      this.clearWins();
+      this.idleWins = [];
+    }
+    if (outcome.wheel && this.m.wheel) {
+      this.phase = 'bonus';
+      await playWheel(this.stage(bet), this.m.wheel, outcome.wheel, bet);
+      if (this.disposed) return;
+      paid += outcome.wheel.payout;
+      this.onBonusPlayed('wheel', outcome);
+    }
+    if (outcome.cascade && this.m.cascade) {
+      this.phase = 'bonus';
+      await playCascade(this.stage(bet), this.m.cascade, outcome.cascade, bet, outcome.base.grid);
+      if (this.disposed) return;
+      paid += outcome.cascade.payout;
+      this.onBonusPlayed('cascade', outcome);
+    }
+    if (outcome.chests && this.m.chests) {
+      this.phase = 'bonus';
+      await playChests(this.stage(bet), outcome.chests, bet);
+      if (this.disposed) return;
+      paid += outcome.chests.payout;
+      this.onBonusPlayed('chests', outcome);
+    }
+    void paid;
+
     this.finishRound(outcome);
+  }
+
+  /** Hook per le sottoclassi (riconoscimenti). */
+  protected onBonusPlayed(_kind: 'wheel' | 'cascade' | 'chests', _o: RoundOutcome): void {}
+
+  // ═══════════════════════════════════════════════ BONUS
+
+  /** Cio' che la scena presta ai bonus (vedi `bonusStage.ts`). */
+  private stage(bet: number): BonusStage {
+    const self = this;
+    return {
+      m: this.m,
+      world: this.world,
+      fx: this.fx,
+      machine: this.machine,
+      reelLayer: this.reelLayer,
+      reels: this.reels,
+      presenter: this.presenter,
+      hud: this.hud,
+      geo: this.geo,
+      ox: this.ox,
+      oy: this.oy,
+      symbolScale: this.theme.symbolScale,
+      texture: (id) => this.theme.texture(id),
+      quick: () => self.quick,
+      resetQuick: () => {
+        self.quick = false;
+      },
+      turbo: () => self.turbo,
+      auto: () => self.auto,
+      reducedMotion: () => settings().reducedMotion,
+      disposed: () => self.disposed,
+      shake: (a, d) => self.shake(a, d),
+      titleCard: (t, s, tint, hold) => self.titleCard(t, s, tint, hold),
+      waitPress: (label, enabled) => self.waitBonusPress(label, enabled),
+      press: () => self.pressBonus(),
+      setPressEnabled: (on) => self.hud.setPrimaryEnabled(on),
+    };
+    void bet;
+  }
+
+  private waitBonusPress(label: string, enabled?: () => boolean): Promise<void> {
+    return new Promise((resolve) => {
+      this.pressEnabled = enabled ?? null;
+      this.pressResolve = () => {
+        this.pressResolve = null;
+        this.pressEnabled = null;
+        this.hud.setPrimary(ss('skip'));
+        resolve();
+      };
+      this.hud.setPrimary(label, { enabled: enabled ? enabled() : true });
+      // In automatico il pulsante si preme da solo, appena e' premibile.
+      if (this.auto) {
+        const tryAuto = () => {
+          if (!this.pressResolve || this.disposed) return;
+          if (!this.pressEnabled || this.pressEnabled()) this.pressResolve();
+          else setTimeout(tryAuto, 300);
+        };
+        setTimeout(tryAuto, this.turbo ? 500 : 900);
+      }
+    });
+  }
+
+  private pressBonus(): void {
+    if (!this.pressResolve) return;
+    if (this.pressEnabled && !this.pressEnabled()) return;
+    this.pressResolve();
   }
 
   private finishRound(outcome: RoundOutcome): void {
@@ -448,43 +590,77 @@ export class SlotScene extends GameScene {
     // Arresti IN CASCATA: ogni rullo comincia a frenare `stagger` secondi
     // dopo il precedente, senza aspettare che quello abbia finito. Prima
     // ogni arresto era atteso per intero e un giro durava 10-13 secondi.
-    const { scatter } = symbolIndex(this.m);
+    const teasers = this.teasers();
     const landed: Promise<void>[] = [];
     for (let r = 0; r < this.reels.length; r++) {
       const reel = this.reels[r]!;
-      // Anticipazione: con 2 scatter nei rulli precedenti (gia' noti dalla
-      // griglia decisa), il rullo successivo si fa attendere un poco.
-      const before = scatter === null ? 0 : o.grid.slice(0, r).flat().filter((x) => x === scatter).length;
-      const tease = scatter !== null && before >= 2 && !this.quick;
+      // Suspense: se nei rulli gia' fermi manca UN SOLO simbolo bonus (o
+      // scatter) a quelli che servono, e questo rullo puo' portarlo, il rullo
+      // rallenta a vista e si fa attendere prima di fermarsi.
+      const before = o.grid.slice(0, r).flat();
+      const tease =
+        !this.quick &&
+        teasers.some((tz) => before.filter((x) => x === tz.id).length >= tz.need - 1 && strips[r]!.includes(tz.id));
       if (tease) {
         await Promise.all(landed);
         if (this.disposed) return;
         this.anticipate(r, true);
-        await wait(SPIN_T.tease, () => this.quick);
       } else if (r > 0) {
         await wait(this.quick ? 0 : turbo ? SPIN_T.staggerTurbo : SPIN_T.stagger, () => this.quick);
       }
       if (this.disposed) return;
       const dur = this.quick ? SPIN_T.stopQuick : turbo ? SPIN_T.stopTurbo : SPIN_T.stop;
+      const teaseSec = turbo ? SPIN_T.teaseTurbo : SPIN_T.tease;
+      // In suspense il rullo frena in un solo movimento continuo, lungo
+      // quanto l'attesa piu' l'arresto; i rulli dopo rallentano un poco:
+      // tutta la macchina trattiene il fiato.
+      const stopped = tease
+        ? reel.teaseStop(o.stops[r]!, teaseSec + SPIN_T.teaseStop, () => this.quick)
+        : reel.stopAt(o.stops[r]!, this.quick ? 2 : 3, dur);
+      if (tease) for (let k = r + 1; k < this.reels.length; k++) this.reels[k]!.slowTo(SPIN_T.teaseSpeed * 1.6, teaseSec * 0.8);
       landed.push(
-        reel.stopAt(o.stops[r]!, this.quick ? 2 : 3, dur).then(async () => {
+        stopped.then(async () => {
           if (this.disposed) return;
           this.anticipate(r, false);
           sfxReelStop(r);
           const col = o.grid[r]!;
-          if (scatter && col.includes(scatter)) this.onScatterLanded(r, col.indexOf(scatter));
+          for (const tz of teasers) {
+            col.forEach((id, row) => id === tz.id && this.onScatterLanded(r, row));
+          }
           if (o.coinValues) this.showCoinValues(r, o.coinValues[r]!);
           this.onReelLanded(r, o);
           // Il wild si espande nell'istante in cui il suo rullo si ferma.
           if (o.expandedReels.includes(r)) await this.expandWilds([r]);
         })
       );
+      // I rulli dopo partono a frenare solo quando questo e' quasi fermo.
+      if (tease) await wait(teaseSec, () => this.quick);
     }
     await Promise.all(landed);
   }
 
   /** Hook per le sottoclassi (es. monete con valore). */
   protected onReelLanded(_reel: number, _o: SpinOutcome): void {}
+
+  /**
+   * Simboli che fanno suspense, con quanti ne servono: lo scatter dei giri
+   * gratis e i simboli dei bonus interni. Le monete dell'Hold & Win no: ne
+   * escono troppe perche' l'attesa resti un evento.
+   */
+  private teasers(): { id: SymId; need: number }[] {
+    const out: { id: SymId; need: number }[] = [];
+    const { scatter, byId } = symbolIndex(this.m);
+    const minKey = (t: Readonly<Record<number, number>> | undefined) =>
+      t ? Math.min(...Object.keys(t).map(Number)) : Infinity;
+    if (scatter) {
+      const need = minKey(byId.get(scatter)?.freeSpins);
+      if (Number.isFinite(need)) out.push({ id: scatter, need });
+    }
+    if (this.m.wheel) out.push({ id: this.m.wheel.symbol, need: this.m.wheel.trigger });
+    if (this.m.cascade) out.push({ id: this.m.cascade.symbol, need: minKey(this.m.cascade.spins) });
+    if (this.m.chests) out.push({ id: this.m.chests.symbol, need: this.m.chests.trigger });
+    return out;
+  }
 
   private onScatterLanded(reel: number, row: number): void {
     const s = this.reels[reel]!.cell(row);
@@ -1022,11 +1198,18 @@ export class SlotScene extends GameScene {
     // maschera della cella che scende e si ferma con un rimbalzo, colonna
     // dopo colonna da sinistra. Prima le celle cambiavano solo texture a
     // scatti e non si capiva che si stesse girando.
-    const filler = this.m.symbols.filter((d) => d.id !== rule.coin && !d.scatter && !d.wild).map((d) => d.id);
+    // Il rimescolo mostra solo simboli "di riempimento": niente monete, wild,
+    // scatter o simboli dei bonus interni (un forziere qui confonderebbe).
+    const bonusIds = new Set([this.m.wheel?.symbol, this.m.cascade?.symbol, this.m.chests?.symbol]);
+    const filler = this.m.symbols
+      .filter((d) => d.id !== rule.coin && !d.scatter && !d.wild && !bonusIds.has(d.id))
+      .map((d) => d.id);
     const pick = () => filler[Math.floor(Math.random() * filler.length)]!;
     const spinLayer = new Container();
     layer.addChildAt(spinLayer, 0);
-    const STRIP_N = 8;
+    // Nastro piu' lungo e corsa piu' lenta: il mini-rullo si vede girare e
+    // rallentare, invece di "scattare" sull'esito.
+    const STRIP_N = 12;
     let respinNo = 0;
     for (const step of hw.respins) {
       if (this.disposed) return;
@@ -1034,8 +1217,9 @@ export class SlotScene extends GameScene {
       sfxSpinStart();
       this.respinBanner(respinNo, T(0.5));
       const landedAt = new Map(step.landed.map((c) => [`${c.reel},${c.row}`, c]));
-      const spinDur = T(0.55);
-      const colDelay = T(0.07);
+      const spinDur = T(0.9);
+      const colDelay = T(0.11);
+      const rowDelay = T(0.035);
       const jobs: Promise<void>[] = [];
       for (let r = 0; r < this.m.reels; r++)
         for (let row = 0; row < rows; row++) {
@@ -1050,6 +1234,15 @@ export class SlotScene extends GameScene {
               sfxCoin();
               drawVeil();
             } else this.reels[r]!.setCellTexture(row, this.theme.texture(finalId!));
+            // Lampo d'oro nella cella appena ferma: si legge il "clac" del rullo.
+            if (!reduced && !this.quick) {
+              const flash = new Graphics()
+                .roundRect(r * (cellW + gap) + 4, row * cellH + 4, cellW - 8, cellH - 8, 14)
+                .fill({ color: coin ? PALETTE.gold.light : PALETTE.gold.core, alpha: coin ? 0.5 : 0.22 });
+              flash.blendMode = 'add';
+              layer.addChild(flash);
+              gsap.to(flash, { alpha: 0, duration: 0.35, ease: 'power2.out', onComplete: () => flash.destroy() });
+            }
           };
           if (spinDur <= 0 || reduced) {
             land();
@@ -1069,6 +1262,8 @@ export class SlotScene extends GameScene {
             s.anchor.set(0.5);
             s.scale.set(this.theme.symbolScale);
             s.position.set(cellW / 2, cellH / 2 - i * cellH);
+            // I simboli di passaggio sono un po' spenti: l'esito "si accende" all'arrivo.
+            if (!last) s.alpha = 0.7;
             tape.addChild(s);
           }
           cellBox.addChild(mask, tape);
@@ -1080,8 +1275,9 @@ export class SlotScene extends GameScene {
               gsap.to(tape, {
                 y: (STRIP_N - 1) * cellH,
                 duration: spinDur,
-                delay: r * colDelay,
-                ease: 'back.out(1.1)',
+                // A onda: colonna dopo colonna, e dentro la colonna dall'alto.
+                delay: r * colDelay + row * rowDelay,
+                ease: 'back.out(1.35)',
                 onComplete: () => {
                   cellBox.destroy({ children: true });
                   if (!this.disposed) land();
@@ -1303,6 +1499,13 @@ export class SlotScene extends GameScene {
         }
       }
       if (s.wild) rows.push('WILD');
+      if (m.wheel && s.id === m.wheel.symbol) rows.push(ss('bonusTrigWheel'));
+      if (m.cascade && s.id === m.cascade.symbol) {
+        for (const [k, v] of Object.entries(m.cascade.spins).sort((a, b) => Number(b[0]) - Number(a[0]))) {
+          rows.push(ss('bonusTrigCascade', { n: k, s: v }));
+        }
+      }
+      if (m.chests && s.id === m.chests.symbol) rows.push(ss('bonusTrigChests', { n: m.chests.trigger }));
       pays.append(
         div(
           'go-pay__item',
@@ -1337,6 +1540,15 @@ export class SlotScene extends GameScene {
       el('p', { class: 'go-pay__note', text: ss('rulesBetNow', { bet: formatMoney(bet) }) }),
       el('h3', { text: ss('rulesFeatures') }),
       ...this.theme.features().map((p) => el('p', { text: p })),
+      ...(this.theme.bonusGuide
+        ? [
+            el('h3', { text: ss('rulesBonus') }),
+            ...this.theme.bonusGuide().flatMap((g) => [
+              el('h4', { class: 'go-pay__bonus-title', text: g.title }),
+              el('ol', { class: 'go-pay__steps' }, ...g.steps.map((st) => el('li', { text: st }))),
+            ]),
+          ]
+        : []),
       el('h3', { text: ss('rulesPays') }),
       el('p', {
         class: 'go-pay__note',
@@ -1355,16 +1567,4 @@ export class SlotScene extends GameScene {
     for (const r of this.reels) gsap.killTweensOf(r);
     super.dispose();
   }
-}
-
-/** Attesa in secondi, interrompibile da una condizione (arresto rapido). */
-export function wait(sec: number, interrupt: () => boolean): Promise<void> {
-  return new Promise((resolve) => {
-    const end = performance.now() + sec * 1000;
-    const loop = () => {
-      if (interrupt() || performance.now() >= end) resolve();
-      else requestAnimationFrame(loop);
-    };
-    loop();
-  });
 }

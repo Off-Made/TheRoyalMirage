@@ -45,6 +45,8 @@ export interface ProfileState {
   createdAt: number;
   /** Ultima modalita' usata: si riparte da li'. */
   lastMode: ModeId;
+  /** Secondi passati sul sito con la pagina visibile, in tutte le sessioni. */
+  playSeconds: number;
 }
 
 export interface PersistedState {
@@ -65,7 +67,7 @@ function walletFor(mode: ModeId): WalletState {
 
 function defaults(): PersistedState {
   return {
-    profile: { name: '', createdAt: Date.now(), lastMode: 'career' },
+    profile: { name: '', createdAt: Date.now(), lastMode: 'career', playSeconds: 0 },
     settings: initialSettings(),
     progression: initialProgression(),
     wallets: {
@@ -340,6 +342,12 @@ export const actions = {
   updateSettings(patch: Partial<SettingsState>): void {
     store.setState((s) => ({ settings: { ...s.settings, ...patch } }));
     bus.emit('settings:changed', patch);
+  },
+
+  /** Aggiunge tempo di gioco (secondi con la pagina visibile). */
+  addPlayTime(seconds: number): void {
+    if (!(seconds > 0)) return;
+    store.setState((s) => ({ profile: { ...s.profile, playSeconds: (s.profile.playSeconds ?? 0) + Math.round(seconds) } }));
   },
 
   setName(name: string): void {

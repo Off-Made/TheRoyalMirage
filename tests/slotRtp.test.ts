@@ -33,7 +33,8 @@ describe.each(Object.entries(MACHINES))('RTP %s', (id, m) => {
     // Una slot che non paga mai, o che paga sempre, e' rotta anche con l'RTP giusto.
     expect(s.hitRate).toBeGreaterThan(0.15);
     expect(s.hitRate).toBeLessThan(0.6);
-  }, 120_000);
+  // 4M giri durano 1-2 minuti, di piu' su un PC carico: il test misura l'RTP, non la velocita'.
+  }, 300_000);
 
   it('dichiara in lobby lo stesso RTP del modello', () => {
     expect(GAMES.find((g) => g.id === id)?.rtp).toBe(m.rtpTarget);
