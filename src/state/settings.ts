@@ -103,6 +103,11 @@ export interface SettingsState {
   demoHoldWin: boolean;
   /** Bonus interni (ruota, cascata, forzieri) piu' frequenti. */
   demoBonus: boolean;
+  /**
+   * Solo modalita' Libera: nelle slot mostra l'RTP reale della sessione
+   * (vinto / puntato), aggiornato a ogni giro.
+   */
+  showSlotRtp: boolean;
   /** Auto-spin: numero di spin consecutivi. 0 = disattivato. */
   autoSpinCount: number;
 }
@@ -153,6 +158,7 @@ export function initialSettings(): SettingsState {
     demoFreeSpins: false,
     demoHoldWin: false,
     demoBonus: false,
+    showSlotRtp: false,
     autoSpinCount: 0,
   };
 }

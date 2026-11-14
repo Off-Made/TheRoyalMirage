@@ -16,15 +16,15 @@
  * valori di riferimento sono annotati in docs/STATO.md.
  */
 import { describe, expect, it } from 'vitest';
-import { simulate, formatStats } from '@/games/slots/engine/simulate';
+import { simulateAsync, formatStats } from '@/games/slots/engine/simulate';
 import { MACHINES } from '@/games/slots/machines';
 import { GAMES } from '@/games/registry';
 
 const SPINS = 4_000_000;
 
 describe.each(Object.entries(MACHINES))('RTP %s', (id, m) => {
-  it(`resta entro 3σ dal ${m.rtpTarget}% dichiarato`, () => {
-    const s = simulate(m, SPINS, 20261028);
+  it(`resta entro 3σ dal ${m.rtpTarget}% dichiarato`, async () => {
+    const s = await simulateAsync(m, SPINS, 20261028);
     console.info(formatStats(id, s));
     // Un σ enorme vorrebbe dire una simulazione troppo corta per dire
     // qualcosa: in quel caso il test deve fallire, non allargarsi all'infinito.

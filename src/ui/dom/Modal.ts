@@ -152,6 +152,8 @@ export function showModal(opts: ModalOptions): { close: () => void } {
 export function confirmModal(opts: {
   titleKey: TranslationKey;
   messageKey: TranslationKey;
+  /** Testo gia' tradotto, con valori (date, nomi): sostituisce `messageKey`. */
+  message?: string;
   confirmKey?: TranslationKey;
   danger?: boolean;
 }): Promise<boolean> {
@@ -176,7 +178,9 @@ export function confirmModal(opts: {
     showModal({
       titleKey: opts.titleKey,
       width: 540,
-      body: el('p', { class: 'go-confirm__msg', i18n: opts.messageKey }),
+      body: opts.message
+        ? el('p', { class: 'go-confirm__msg', text: opts.message })
+        : el('p', { class: 'go-confirm__msg', i18n: opts.messageKey }),
       footer,
       // Chiudere cliccando fuori su una conferma distruttiva equivarrebbe a
       // un "annulla" silenzioso: meglio obbligare a una scelta esplicita.

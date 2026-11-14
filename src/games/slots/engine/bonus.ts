@@ -157,18 +157,43 @@ export function runCascade(m: MachineDef, rule: CascadeRule, spinsAwarded: numbe
   let explode: (readonly [number, number])[] = [];
   let retriggers = 0;
   let won = false;
+  /** L'ultimo giro era una griglia nuova senza vincite. */
+  let freshMiss = false;
+  /** Griglie nuove senza vincite di fila (per il recupero). */
+  let misses = 0;
+
+  const evaluate = (g: Grid, mult: number) => {
+    const { grid: evalGrid } = expandWilds(m, g, 'base');
+    return m.evalMode === 'ways' ? evaluateWays(m, evalGrid, lineBet, mult) : evaluateLines(m, evalGrid, lineBet, mult);
+  };
+  const deal = () => {
+    const st = strips.map((x) => rng.int(x.length));
+    const g = strips.map((x, r) => Array.from({ length: m.rows }, (_, row) => x[(st[r]! + row) % x.length]!));
+    return { stops: st, grid: g };
+  };
 
   while (left > 0) {
     let kind: 'fresh' | 'drop';
     let stops: number[] | undefined;
+    let rescue = false;
     if (grid === null || explode.length === 0) {
-      // Giro nuovo dopo un giro senza vincite: la griglia si rifa' da capo e il
-      // moltiplicatore torna a ×1, oppure scende di un solo gradino (`stepBack`).
       kind = 'fresh';
-      stops = strips.map((st) => rng.int(st.length));
+      // Il moltiplicatore scende di un gradino SOLO dopo una griglia nuova
+      // senza vincite (`stepBack`). Se finisce una catena di vincite resta
+      // dov'e'. Senza `stepBack` torna a ×1 a ogni griglia nuova.
+      if (!rule.stepBack) chain = 0;
+      else if (freshMiss) chain = Math.max(0, chain - 1);
+      const mult = rule.ladder[Math.min(chain, rule.ladder.length - 1)]!;
+      let d = deal();
+      // Recupero: dopo `pityAfter` griglie di fila senza vincite, la
+      // prossima e' una griglia che vince qualcosa.
+      if (rule.pityAfter && misses >= rule.pityAfter) {
+        rescue = true;
+        for (let k = 0; k < 60 && evaluate(d.grid, mult).length === 0; k++) d = deal();
+      }
+      stops = d.stops;
       top = stops.slice();
-      grid = strips.map((st, r) => Array.from({ length: m.rows }, (_, row) => st[(stops![r]! + row) % st.length]!));
-      if (grid !== null) chain = rule.stepBack ? Math.max(0, chain - 1) : 0;
+      grid = d.grid;
     } else {
       kind = 'drop';
       const gone = new Set(explode.map(([r, row]) => `${r},${row}`));
@@ -182,14 +207,12 @@ export function runCascade(m: MachineDef, rule: CascadeRule, spinsAwarded: numbe
         return [...fresh, ...keep];
       });
       // Sale solo dopo una vincita vera (non se e' esploso solo un Biglietto),
-      // e mai oltre l'ultimo gradino: cosi' "scendere di uno" e' sempre visibile.
+      // e mai oltre l'ultimo gradino.
       if (won) chain = Math.min(chain + 1, rule.ladder.length - 1);
     }
     left--;
     const multiplier = rule.ladder[Math.min(chain, rule.ladder.length - 1)]!;
-    const { grid: evalGrid } = expandWilds(m, grid, 'base');
-    const wins =
-      m.evalMode === 'ways' ? evaluateWays(m, evalGrid, lineBet, multiplier) : evaluateLines(m, evalGrid, lineBet, multiplier);
+    const wins = evaluate(grid, multiplier);
     const stepPay = wins.reduce((s, w) => s + w.payout, 0);
     payout += stepPay;
     const cells = new Map<string, readonly [number, number]>();
@@ -211,9 +234,16 @@ export function runCascade(m: MachineDef, rule: CascadeRule, spinsAwarded: numbe
     for (const c of bonusCells) cells.set(`${c[0]},${c[1]}`, c);
     explode = [...cells.values()];
     won = wins.length > 0;
-    steps.push({ kind, grid, stops, wins, multiplier, payout: stepPay, left, explode, added, bonusCells });
+    if (kind === 'fresh') {
+      freshMiss = !won;
+      misses = won ? 0 : misses + 1;
+    } else freshMiss = false;
+    steps.push({ kind, grid, stops, wins, multiplier, payout: stepPay, left, explode, added, bonusCells, rescue });
   }
-  return { spins: spinsAwarded, steps, payout };
+  // Vincita minima garantita: la cascata restituisce almeno `minWin` puntate.
+  const floor = (rule.minWin ?? 0) * bet;
+  const topUp = payout < floor ? floor - payout : 0;
+  return { spins: spinsAwarded, steps, payout: payout + topUp, topUp };
 }
 
 // ═══════════════════════════════════════════════ FORZIERI

@@ -37,7 +37,7 @@ import {
 } from './progression';
 import { type SettingsState, initialSettings } from './settings';
 import { type ModeId, MODES } from './modes';
-import { load, debouncedSaver, wipe } from './save';
+import { load, debouncedSaver, wipe, decode } from './save';
 import { bus } from './events';
 
 export interface ProfileState {
@@ -381,5 +381,23 @@ export const actions = {
 
   flushSave(): void {
     saver.flush();
+  },
+
+  /**
+   * Ripristina un salvataggio da backup (`state/backup.ts`): stesse
+   * migrazioni del caricamento normale, poi lo scrive subito. Lo stato in
+   * memoria diventa quello del backup, cosi' la scrittura alla chiusura della
+   * pagina non lo ricopre con quello vecchio. False = backup illeggibile.
+   */
+  restoreSave(envelope: unknown): boolean {
+    let data: PersistedState;
+    try {
+      data = decode(defaults(), JSON.stringify(envelope));
+    } catch {
+      return false;
+    }
+    store.setState({ ...data, mode: data.profile.lastMode }, true);
+    saver.flush();
+    return true;
   },
 };

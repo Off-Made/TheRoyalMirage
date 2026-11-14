@@ -101,16 +101,7 @@ export function load<T>(defaults: T): T {
   if (!raw) return defaults;
 
   try {
-    const env = JSON.parse(raw) as Envelope<Record<string, unknown>>;
-    if (!isObject(env) || typeof env.version !== 'number' || !isObject(env.data)) {
-      throw new Error('Formato di salvataggio non riconosciuto');
-    }
-    let data = env.data;
-    for (let v = env.version; v < SAVE_VERSION; v++) {
-      const m = migrations[v];
-      if (m) data = m(data);
-    }
-    return deepMerge(defaults, data);
+    return decode(defaults, raw);
   } catch (err) {
     console.warn('[save] Salvataggio corrotto, ripartenza pulita. Backup conservato.', err);
     try {
@@ -120,6 +111,24 @@ export function load<T>(defaults: T): T {
     }
     return defaults;
   }
+}
+
+/**
+ * Legge un salvataggio grezzo (busta JSON con versione): migrazioni e merge
+ * con i default. Lancia un errore se il formato non e' riconosciuto. Lo usa
+ * anche il ripristino da backup (`backup.ts`).
+ */
+export function decode<T>(defaults: T, raw: string): T {
+  const env = JSON.parse(raw) as Envelope<Record<string, unknown>>;
+  if (!isObject(env) || typeof env.version !== 'number' || !isObject(env.data)) {
+    throw new Error('Formato di salvataggio non riconosciuto');
+  }
+  let data = env.data;
+  for (let v = env.version; v < SAVE_VERSION; v++) {
+    const m = migrations[v];
+    if (m) data = m(data);
+  }
+  return deepMerge(defaults, data);
 }
 
 export function save<T>(data: T): boolean {

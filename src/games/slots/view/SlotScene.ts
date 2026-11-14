@@ -27,7 +27,7 @@ import type { GameId } from '@/games/registry';
 import { button, div, el } from '@/ui/dom/el';
 import { PALETTE, PAYLINE_COLORS, rgba } from '@/art/palette';
 import { preloadImages } from '@/art/images';
-import { t as tr } from '@/i18n';
+import { t as tr, getLanguage } from '@/i18n';
 import { gameById } from '@/games/registry';
 import { bake } from '@/art/textureCache';
 import { wallet, settings, actions, store } from '@/state/store';
@@ -327,6 +327,17 @@ export class SlotScene extends GameScene {
     this.turbo = settings().fastPlay;
     this.turboBtn.classList.toggle('is-on', this.turbo);
     this.hud.extra.append(this.turboBtn, this.autoBtn);
+    // RTP della sessione (solo modalita' Libera, se acceso nelle impostazioni).
+    this.rtpEl = el('div', { class: 'go-hud__rtp numeric', attrs: { 'aria-live': 'off' } });
+    this.hud.topExtra.prepend(this.rtpEl);
+    this.updateRtp();
+    // L'interruttore si puo' cambiare anche a gioco aperto.
+    let shown = settings().showSlotRtp;
+    this.unsubRtp = store.subscribe(() => {
+      if (settings().showSlotRtp === shown) return;
+      shown = settings().showSlotRtp;
+      this.updateRtp();
+    });
     // Il nome del gioco sta gia' sull'insegna del cabinet: in alto sarebbe un doppione.
     this.hud.root.classList.add('go-hud--marquee');
     this.hud.message(ss('good'));
@@ -383,6 +394,37 @@ export class SlotScene extends GameScene {
 
   // ═══════════════════════════════════════════════ GIOCATA
 
+  /** RTP reale della sessione: puntato e vinto da quando si e' entrati. */
+  private rtpEl: HTMLElement | null = null;
+  private rtpBet = 0;
+  private rtpWon = 0;
+  private rtpSpins = 0;
+  private rtpOpen = false;
+  private unsubRtp: (() => void) | null = null;
+
+  private updateRtp(): void {
+    const show = store.getState().mode === 'freeplay' && settings().showSlotRtp;
+    if (!this.rtpEl) return;
+    this.rtpEl.hidden = !show;
+    if (!show) return;
+    const pct = this.rtpBet > 0 ? (this.rtpWon / this.rtpBet) * 100 : 0;
+    const fmt = (v: number) => v.toLocaleString(getLanguage(), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    this.rtpEl.textContent = ss('rtpLive', { pct: this.rtpSpins > 0 ? `${fmt(pct)}%` : '—', n: this.rtpSpins, target: `${fmt(this.m.rtpTarget)}%` });
+    this.rtpEl.classList.toggle('is-up', this.rtpSpins > 0 && pct >= this.m.rtpTarget);
+    this.rtpEl.classList.toggle('is-down', this.rtpSpins > 0 && pct < this.m.rtpTarget);
+  }
+
+  protected override settle(bet: number, payout: number): void {
+    super.settle(bet, payout);
+    if (!this.rtpOpen) return;
+    this.rtpOpen = false;
+    this.rtpWon += payout;
+    this.updateRtp();
+  }
+
+  /** Contatore dei giri per la Presentazione (un giro pilotato ogni tre). */
+  private demoTick = 0;
+
   protected async spin(): Promise<void> {
     if (this.phase !== 'idle') return;
     const bet = wallet().bet;
@@ -390,8 +432,13 @@ export class SlotScene extends GameScene {
       this.stopAuto();
       return;
     }
-    // Presentazione: solo in modalita' Libera, un giro su tre circa (`demo.ts`).
-    const demo = demoCriterion(this.m, bet, store.getState().mode, settings(), Math.random());
+    this.rtpBet += bet;
+    this.rtpSpins++;
+    this.rtpOpen = true;
+    // Presentazione: solo in modalita' Libera, ESATTAMENTE un giro su tre (`demo.ts`):
+    // con un tiro a caso capitavano serie di 6-8 giri senza l'evento scelto.
+    this.demoTick = (this.demoTick + 1) % 3;
+    const demo = demoCriterion(this.m, bet, store.getState().mode, settings(), this.demoTick === 0 ? 0 : 1);
     let outcome = demo ? demoRound(this.m, bet, this.rng, demo) : playRound(this.m, bet, this.rng);
     // Solo sviluppo: `GO.slot.want = (o) => o.free.length > 0` forza un esito
     // con la caratteristica voluta, per collaudare le animazioni rare.
@@ -1562,6 +1609,8 @@ export class SlotScene extends GameScene {
   }
 
   dispose(): void {
+    this.unsubRtp?.();
+    this.unsubRtp = null;
     this.stopAuto();
     this.hideWildColumns();
     for (const r of this.reels) gsap.killTweensOf(r);

@@ -665,3 +665,36 @@
     transform-origin: left top;
   }
 }
+
+/* Telefono in orizzontale: vetrina e riquadro di stato piu' compatti. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .go-showcase__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--sp-3);
+  }
+  .go-showcase__title {
+    font-size: 1.5rem;
+  }
+  .go-tile {
+    gap: var(--sp-2);
+  }
+  .go-tile__name {
+    font-size: 0.95rem;
+  }
+  .go-tile__tag {
+    font-size: 0.68rem;
+  }
+  .go-status {
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+  }
+}
+
+/* Telefono in verticale: la barra in alto scende sotto la tacca della fotocamera. */
+@media (max-width: 760px) {
+  .go-topbar {
+    padding-top: max(var(--sp-3), calc(env(safe-area-inset-top) + 4px));
+    padding-left: max(var(--gutter), env(safe-area-inset-left));
+    padding-right: max(var(--gutter), env(safe-area-inset-right));
+  }
+}

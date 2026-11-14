@@ -45,14 +45,17 @@ composizione dei rulli. Ogni bonus è spiegato passo per passo nella scheda
   conta quello che è uscito prima: dopo un giro scarso scatta la rimonta (un ×5 o
   più è più probabile e uno STOP meno), dopo un ×10 o più i premi alti si fanno
   rari. Vincita massima della ruota: 100 volte la puntata, in media circa 18.
-- **Cascata** (Hollywood Nights) — 3, 4 o 5 Biglietti danno 8, 12 o 16 giri a
+- **Cascata** (Hollywood Nights) — 3, 4 o 5 Biglietti danno 6, 9 o 12 giri a
   cascata: le combinazioni vincenti esplodono, i simboli cadono, ne entrano di
-  nuovi e il moltiplicatore sale a ogni cascata (×1 → ×2 → ×3 → ×5 → ×10). Quando
-  un giro non vince non torna a ×1: scende di un solo gradino (da ×10 a ×5).
-  Raramente un Biglietto sul rullo centrale aggiunge 5 giri.
+  nuovi e il moltiplicatore sale a ogni cascata (×1 → ×2 → ×3 → ×4 → ×5). Finché
+  vinci non scende mai; solo una griglia nuova che non vince lo fa scendere di
+  un gradino (da ×5 a ×4), mai di colpo a ×1. Dopo 3 griglie di fila senza
+  vincite scatta il **recupero** (la griglia dopo vince sicuramente) e la
+  cascata paga **sempre almeno la puntata**. Raramente un Biglietto sul rullo
+  centrale aggiunge 5 giri.
 - **I Forzieri** (Diamond Royale) — 4 o più Forzieri ovunque. La slot sale e
   compaiono 5 forzieri: se ne sceglie uno e si apre. Ogni forziere ha un
-  moltiplicatore diverso della puntata (da ×1 a ×50); più Forzieri sui rulli,
+  moltiplicatore diverso della puntata (da ×2 a ×50, niente ×1); più Forzieri sui rulli,
   più ricchi i forzieri.
 
 Anche l'Hold & Win di Diamond Royale ha la sua spiegazione passo per passo
@@ -78,9 +81,17 @@ suspense delle slot vere.
 - **Impostazioni**: lingua (italiano / inglese), qualità grafica, volume di musica
   ed effetti, movimento ridotto, contatore FPS. In Gioco Libero c'è anche il gruppo
   **Presentazione**, per le dimostrazioni: rende più frequenti vincite grandi,
-  giri gratis, Hold & Win e i bonus speciali (ruota, cascata, forzieri).
+  giri gratis, Hold & Win e i bonus speciali (ruota, cascata, forzieri):
+  esattamente un giro su tre è pilotato verso uno degli eventi accesi. Sempre in
+  Gioco Libero si può mostrare nelle slot l'**RTP in tempo reale** della sessione.
+- **Backup** (nelle impostazioni): si scarica un file con tutti i progressi e lo si
+  ripristina quando serve, anche su un altro dispositivo. Il sito tiene anche da
+  solo le ultime 3 copie automatiche (al massimo una al giorno), che restano anche
+  dopo "Cancella tutti i dati".
 - **Vincita minima 0,01 €** nelle slot: una combinazione vincente non paga mai 0,00 €.
 - **Telefono**: home e sala funzionano in verticale, i tavoli in orizzontale.
+  Niente zoom involontario della pagina, niente testi sotto la tacca della
+  fotocamera; le notifiche sono compatte e si mandano via con uno swipe.
   Si può aggiungere alla schermata Home come un'app (vedi [`docs/IPHONE.md`](docs/IPHONE.md)).
 - **Tasto Indietro del browser**: riporta alla schermata precedente
   (tavolo → sala → home) invece di chiudere il sito.

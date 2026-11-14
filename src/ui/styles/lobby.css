@@ -463,3 +463,42 @@
     font-size: 1.7rem;
   }
 }
+
+/* Telefono in orizzontale: carte dei giochi piu' piccole, ne stanno di piu' per riga. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .go-grid {
+    grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+    gap: var(--sp-3);
+  }
+  .go-card__cover .go-cover {
+    aspect-ratio: 2 / 1;
+  }
+  .go-card__body {
+    gap: var(--sp-1);
+    padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  }
+  .go-card__name {
+    font-size: 1.05rem;
+  }
+  .go-card__tag,
+  .go-card__hint {
+    font-size: 0.72rem;
+  }
+  .go-card__specs {
+    gap: var(--sp-3);
+    margin: 0 0 var(--sp-1);
+  }
+  .go-card__spec dd {
+    font-size: 0.78rem;
+  }
+  .go-card__spec dt {
+    font-size: 0.62rem;
+  }
+  .go-card__action {
+    min-height: 36px;
+    font-size: 0.85rem;
+  }
+  .go-section__title {
+    font-size: 1.5rem;
+  }
+}

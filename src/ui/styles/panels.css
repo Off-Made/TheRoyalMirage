@@ -400,3 +400,114 @@
 .go-grow__num {
   font-weight: 700;
 }
+
+/* ══════════════════════════════════════════════════════ TELEFONO: MODALI
+ * Impostazioni, profilo e regole dei giochi: testi un passo sotto e la
+ * modale sempre dentro l'area sicura (mai sotto la tacca della fotocamera).
+ */
+@media (max-width: 760px), (max-height: 500px) {
+  .go-modal-backdrop {
+    padding:
+      max(var(--sp-3), calc(env(safe-area-inset-top) + 6px))
+      max(var(--sp-3), env(safe-area-inset-right))
+      max(var(--sp-3), calc(env(safe-area-inset-bottom) + 6px))
+      max(var(--sp-3), env(safe-area-inset-left));
+  }
+  .go-modal {
+    width: 100%;
+    max-height: 100%;
+  }
+  .go-panel__head {
+    padding-top: var(--sp-3);
+    padding-bottom: var(--sp-3);
+  }
+  .go-panel__title {
+    font-size: 1.35rem;
+  }
+  .go-modal .go-panel__body {
+    padding-top: var(--sp-4);
+    padding-bottom: var(--sp-4);
+    font-size: 0.875rem;
+  }
+  .go-modal__foot {
+    padding-top: var(--sp-3);
+    padding-bottom: var(--sp-3);
+  }
+  /* Impostazioni */
+  .go-group__title {
+    font-size: 1.15rem;
+  }
+  .go-group + .go-group {
+    margin-top: var(--sp-5);
+  }
+  .go-field {
+    gap: var(--sp-3);
+    padding: var(--sp-2) 0;
+  }
+  .go-field__label {
+    font-size: 0.875rem;
+  }
+  .go-field__hint {
+    font-size: 0.75rem;
+  }
+  /* Un interruttore non va mai a capo: e' l'etichetta a farlo. */
+  .go-field:has(> .go-field__control .go-toggle) {
+    flex-wrap: nowrap;
+  }
+  .go-backup__item {
+    padding-left: var(--sp-3);
+  }
+  /* Profilo */
+  .go-profile__rank {
+    font-size: 1.1rem;
+  }
+  .go-pstat__value {
+    font-size: 1.05rem;
+  }
+  .go-trophy__name {
+    font-size: 0.8rem;
+  }
+  .go-trophy__desc {
+    font-size: 0.7rem;
+  }
+  .go-hrow,
+  .go-grow {
+    font-size: 0.75rem;
+  }
+  .go-ladder__name {
+    font-size: 0.9rem;
+  }
+  /* Regole dei giochi */
+  .go-pay {
+    gap: var(--sp-4);
+  }
+  .go-pay h3 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+  .go-pay p,
+  .go-pay__note,
+  .go-pay__steps {
+    font-size: 0.82rem;
+  }
+  .go-pay__bonus-title {
+    font-size: 1rem;
+  }
+  .go-pay__grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--sp-2);
+  }
+  .go-pay__item {
+    padding: var(--sp-2);
+  }
+  .go-pay__sym {
+    width: 46px;
+    height: 46px;
+  }
+  .go-pay__text {
+    font-size: 0.75rem;
+  }
+  .go-pay__text strong {
+    font-size: 1rem;
+  }
+}

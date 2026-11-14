@@ -21,7 +21,7 @@ export const DEMO_SHARE = 1 / 3;
 /** Soglia di "vincita grande", in multipli della puntata. */
 export const DEMO_BIG_WIN = 25;
 /** Tetto ai tentativi: se un criterio e' troppo raro si tiene l'ultimo esito. */
-const MAX_TRIES = 2000;
+const MAX_TRIES = 6000;
 
 type DemoFlags = Pick<SettingsState, 'demoBigWins' | 'demoFreeSpins' | 'demoHoldWin' | 'demoBonus'>;
 

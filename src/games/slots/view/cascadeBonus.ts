@@ -163,13 +163,19 @@ export async function playCascade(st: BonusStage, rule: CascadeRule, o: CascadeO
       cells.forEach((col, r) => col.forEach((s, row) => (s.texture = st.texture(step.grid[r]![row]!))));
     }
     if (st.disposed()) return;
+    if (step.rescue && !st.quick()) chainBanner(st, ss('cascadeRescue'), T(1.0), PALETTE.gold.light);
 
     panel.set(0, String(step.left - step.added));
     panel.set(1, `×${step.multiplier}`);
     if (step.multiplier > (prev?.multiplier ?? 1)) panel.bump(1);
 
     if (step.explode.length === 0) {
-      st.hud.message(ss('cascadeLeft', { n: step.left }));
+      const next = o.steps[i + 1];
+      st.hud.message(
+        next && next.multiplier < step.multiplier
+          ? ss('cascadeDown', { m: next.multiplier, n: step.left })
+          : ss('cascadeLeft', { n: step.left })
+      );
       await wait(T(0.35), () => st.quick());
       continue;
     }
@@ -237,7 +243,15 @@ export async function playCascade(st: BonusStage, rule: CascadeRule, o: CascadeO
     await wait(T(0.12), () => st.quick());
   }
 
-  // ── Totale e ritorno ai rulli.
+  // ── Totale e ritorno ai rulli. Se la cascata ha reso meno della puntata,
+  // la vincita minima garantita la integra.
+  if (o.topUp > 0) {
+    panel.set(2, formatMoney(payoutCents(o.payout)));
+    panel.bump(2);
+    st.hud.message(ss('cascadeTopUp', { coins: formatMoney(payoutCents(o.payout)) }), 'win');
+    await wait(T(1.4), () => st.quick());
+    if (st.disposed()) return;
+  }
   st.hud.message(ss('cascadeEnd', { coins: formatMoney(payoutCents(o.payout)) }), o.payout > 0 ? 'win' : 'info');
   st.resetQuick();
   if (o.payout > 0) await st.presenter.present(payoutCents(o.payout), bet, { forceBig: true, title: ss('cascadeTotalTitle').toUpperCase() });

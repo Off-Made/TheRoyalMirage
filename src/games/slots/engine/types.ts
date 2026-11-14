@@ -202,6 +202,13 @@ export interface CascadeRule {
   retriggerSpins: number;
   /** Quante volte al massimo puo' aggiungere giri in una cascata. */
   retriggerCap: number;
+  /**
+   * Recupero: dopo questo numero di griglie nuove senza vincite di fila, la
+   * griglia successiva e' scelta fra quelle che vincono. Assente = mai.
+   */
+  pityAfter?: number;
+  /** Vincita minima garantita della cascata, in puntate. Assente = nessuna. */
+  minWin?: number;
 }
 
 export interface CascadeStep {
@@ -221,12 +228,17 @@ export interface CascadeStep {
   added: number;
   /** Celle dei simboli bonus che hanno aggiunto giri (per la vista). */
   bonusCells: readonly (readonly [number, number])[];
+  /** Griglia di recupero dopo troppi giri a vuoto (vedi `pityAfter`). */
+  rescue: boolean;
 }
 
 export interface CascadeOutcome {
   spins: number;
   steps: readonly CascadeStep[];
+  /** Totale pagato, integrazione compresa. */
   payout: number;
+  /** Quanto e' stato aggiunto per arrivare alla vincita minima (0 = niente). */
+  topUp: number;
 }
 
 /** Tabella dei forzieri per un numero minimo di simboli. */

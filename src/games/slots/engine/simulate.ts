@@ -28,6 +28,28 @@ export interface SimStats {
 }
 
 export function simulate(m: MachineDef, spins: number, seed = 1): SimStats {
+  const it = run(m, spins, seed);
+  for (;;) {
+    const r = it.next();
+    if (r.done) return r.value;
+  }
+}
+
+/**
+ * Come `simulate` (stesso seme, stessi numeri) ma cede il thread ogni
+ * `chunk` giri: una simulazione da minuti non blocca chi la ospita (il
+ * worker dei test deve poter rispondere al processo principale).
+ */
+export async function simulateAsync(m: MachineDef, spins: number, seed = 1, chunk = 200_000): Promise<SimStats> {
+  const it = run(m, spins, seed, chunk);
+  for (;;) {
+    const r = it.next();
+    if (r.done) return r.value;
+    await new Promise((res) => setTimeout(res, 0));
+  }
+}
+
+function* run(m: MachineDef, spins: number, seed: number, chunk = Infinity): Generator<void, SimStats> {
   const rng = seededRng(seed);
   const bet = m.betDivisor; // puntata di linea = 1: nessun arrotondamento in gioco
   let total = 0;
@@ -48,6 +70,7 @@ export function simulate(m: MachineDef, spins: number, seed = 1): SimStats {
     if (r.holdAndWin) hw++;
     feature += (p - r.base.payout) / bet;
     if (x > maxWin) maxWin = x;
+    if ((i + 1) % chunk === 0) yield;
   }
   const mean = total / spins;
   const variance = sq / spins - mean * mean;

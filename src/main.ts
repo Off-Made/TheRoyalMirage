@@ -24,10 +24,24 @@ import { AtmosphereScene } from './scenes/AtmosphereScene';
 import { shell } from './ui/Shell';
 import { setFpsMeter } from './ui/dom/FpsMeter';
 import { installPlayTimeTracker } from './state/playTime';
+import { takeSnapshot } from './state/backup';
 import './ui/styles/hud.css';
 import { setLanguage } from './i18n';
 import { gsap } from 'gsap';
 import { settings, actions, wallet, getState } from './state/store';
+
+// Safari ignora `user-scalable=no`: il pizzico col dito ingrandirebbe tutta
+// la pagina (HUD e tavolo compresi) senza un modo semplice di tornare indietro.
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+}
+document.addEventListener(
+  'touchmove',
+  (e) => {
+    if (e.touches.length > 1) e.preventDefault();
+  },
+  { passive: false }
+);
 import { profileFor } from './state/settings';
 import { setBakeResolution } from './art/textureCache';
 import { installPaletteVars } from './art/cssVars';
@@ -95,6 +109,8 @@ async function boot(): Promise<void> {
     // a un canvas che sta già disegnando, non a un rettangolo nero.
     status('Apertura della sala');
     shell.install();
+    // Copia automatica del salvataggio (al massimo una ogni 20 ore).
+    takeSnapshot();
     installPlayTimeTracker();
 
     status('Pronto');

@@ -58,13 +58,17 @@ export const DF_SYMBOLS: readonly SymbolDef[] = [
  */
 export const DF_CASCADE: CascadeRule = {
   symbol: 'B',
-  spins: { 3: 8, 4: 12, 5: 16 },
-  ladder: [1, 2, 3, 5, 10],
+  spins: { 3: 6, 4: 9, 5: 12 },
+  ladder: [1, 2, 3, 4, 5],
   // Un giro senza vincite fa scendere il moltiplicatore di un gradino, non a ×1.
   stepBack: true,
   // Un Biglietto durante la cascata aggiunge 5 giri (raro, al massimo 2 volte).
   retriggerSpins: 5,
   retriggerCap: 2,
+  // Dopo 3 griglie di fila senza vincite, la successiva vince qualcosa.
+  pityAfter: 3,
+  // La cascata paga sempre almeno la puntata.
+  minWin: 1,
 };
 
 /**

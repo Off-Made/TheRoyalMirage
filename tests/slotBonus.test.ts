@@ -188,7 +188,7 @@ describe('Cascata', () => {
         if (s.added > 0) expect(s.bonusCells.length).toBeGreaterThan(0);
       }
       expect(o.steps.filter((s) => s.added > 0).length).toBeLessThanOrEqual(DF_CASCADE.retriggerCap);
-      expect(o.payout).toBeCloseTo(o.steps.reduce((s, x) => s + x.payout, 0), 9);
+      expect(o.payout).toBeCloseTo(o.steps.reduce((s, x) => s + x.payout, 0) + o.topUp, 9);
     }
   });
 
@@ -202,15 +202,24 @@ describe('Cascata', () => {
     expect(hit / 400).toBeLessThan(0.4);
   });
 
-  it('senza vincite si rigira da capo e il moltiplicatore scende di un gradino; con vincite si cade e sale', () => {
+  it('il moltiplicatore scende di un gradino solo dopo una griglia nuova che non vince; con vincite si cade e sale', () => {
     const o = runCascade(DESERT_FALCON, DF_CASCADE, 200, 50, seededRng(9));
+    let checkedDown = 0;
+    let checkedKeep = 0;
     for (let i = 1; i < o.steps.length; i++) {
       const prev = o.steps[i - 1]!;
       const s = o.steps[i]!;
       if (prev.explode.length === 0) {
         expect(s.kind).toBe('fresh');
         const idx = DF_CASCADE.ladder.indexOf(prev.multiplier);
-        expect(s.multiplier).toBe(DF_CASCADE.ladder[Math.max(0, idx - 1)]);
+        if (prev.kind === 'fresh') {
+          expect(s.multiplier).toBe(DF_CASCADE.ladder[Math.max(0, idx - 1)]);
+          checkedDown++;
+        } else {
+          // Fine di una catena di vincite: il moltiplicatore resta.
+          expect(s.multiplier).toBe(prev.multiplier);
+          checkedKeep++;
+        }
       } else {
         expect(s.kind).toBe('drop');
         const idx = DF_CASCADE.ladder.indexOf(prev.multiplier);
@@ -219,6 +228,36 @@ describe('Cascata', () => {
         expect(s.multiplier).toBe(DF_CASCADE.ladder[next]);
       }
     }
+    expect(checkedDown).toBeGreaterThan(0);
+    expect(checkedKeep).toBeGreaterThan(0);
+  });
+
+  it('recupero: dopo 3 griglie di fila senza vincite la successiva vince', () => {
+    let rescues = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const o = runCascade(DESERT_FALCON, DF_CASCADE, 12, 50, seededRng(seed));
+      let misses = 0;
+      for (const s of o.steps) {
+        if (s.kind !== 'fresh') continue;
+        if (misses >= DF_CASCADE.pityAfter!) {
+          expect(s.rescue).toBe(true);
+          expect(s.wins.length).toBeGreaterThan(0);
+          rescues++;
+        } else expect(s.rescue).toBe(false);
+        misses = s.wins.length > 0 ? 0 : misses + 1;
+      }
+    }
+    expect(rescues).toBeGreaterThan(0);
+  });
+
+  it('la cascata paga sempre almeno la puntata', () => {
+    let topped = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const o = runCascade(DESERT_FALCON, DF_CASCADE, 6, 50, seededRng(seed));
+      expect(o.payout).toBeGreaterThanOrEqual(50 * DF_CASCADE.minWin! - 1e-9);
+      if (o.topUp > 0) topped++;
+    }
+    expect(topped).toBeGreaterThan(0);
   });
 
   it('nella caduta i simboli rimasti scendono in ordine e ne entrano di nuovi in cima', () => {
@@ -285,6 +324,12 @@ describe('Forzieri', () => {
       for (const v of all) expect(SF_CHESTS.tables[0]!.values).toContain(v);
       expect(o.payout).toBe(o.prize * 100);
     }
+  });
+
+  it('niente ×1: il premio minimo e ×2', () => {
+    for (const t of SF_CHESTS.tables) expect(Math.min(...t.values)).toBe(2);
+    const rng = seededRng(4);
+    for (let i = 0; i < 3000; i++) expect(runChests(SF_CHESTS, 4 + (i % 3), 1, rng).prize).toBeGreaterThanOrEqual(2);
   });
 
   it('piu Forzieri sui rulli = tabella piu ricca', () => {

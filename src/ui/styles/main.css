@@ -43,6 +43,22 @@ input {
   color: inherit;
 }
 
+/* Telefono: niente zoom involontario. Il doppio tocco non ingrandisce la
+   pagina (manipulation) e i campi hanno almeno 16 px: sotto, Safari zooma
+   quando prendono il fuoco e non torna indietro da solo. */
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}
+
 img {
   display: block;
   max-width: 100%;

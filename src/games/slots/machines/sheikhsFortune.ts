@@ -58,9 +58,10 @@ export const SF_CHESTS: ChestRule = {
   trigger: 4,
   chests: 5,
   tables: [
-    { min: 4, values: [1, 2, 3, 5, 8, 10, 15, 25, 50], weights: [40, 32, 22, 10, 3, 1.2, 0.5, 0.2, 0.08] },
-    { min: 5, values: [1, 2, 3, 5, 8, 10, 15, 25, 50], weights: [18, 20, 19, 16, 12, 8, 5, 2.4, 1] },
-    { min: 6, values: [1, 2, 3, 5, 8, 10, 15, 25, 50], weights: [8, 12, 14, 15, 14, 12, 9, 5, 3] },
+    // Niente ×1: il premio minimo e' ×2. Con 4 Forzieri escono quasi sempre ×2-×5.
+    { min: 4, values: [2, 3, 4, 5, 8, 10, 15, 25, 50], weights: [300, 220, 140, 60, 0.8, 0.35, 0.15, 0.06, 0.025] },
+    { min: 5, values: [2, 3, 4, 5, 8, 10, 15, 25, 50], weights: [30, 30, 25, 20, 12, 7, 4, 1.9, 0.8] },
+    { min: 6, values: [2, 3, 4, 5, 8, 10, 15, 25, 50], weights: [12, 14, 14, 15, 14, 12, 9, 5, 3] },
   ],
 };
 

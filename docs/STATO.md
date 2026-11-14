@@ -1,5 +1,23 @@
 # THE ROYAL MIRAGE — Stato dei lavori
 
+## Punto di ripresa — 14/11/2026: cascata, backup, telefono
+
+Verifica: `tsc` pulito · tutti i test verdi, RTP delle slot compreso (Hollywood Nights 97,0%,
+Diamond Royale 96,5%, Lucky Sevens invariata) · build ok. Il telefono non è stato provato su un
+dispositivo vero.
+
+| Area | Cosa | File |
+|---|---|---|
+| Cascata — moltiplicatore | scendeva anche "vincendo": a fine catena di vincite la griglia nuova lo abbassava. Ora scende di un gradino SOLO dopo una griglia nuova senza vincite; a fine catena resta. Messaggio "il moltiplicatore scende a ×N" | `engine/bonus.ts` (`runCascade`), `view/cascadeBonus.ts` |
+| Cascata — recupero e minimo | `pityAfter: 3`: dopo 3 griglie nuove a vuoto la successiva è scelta fra quelle che vincono (banner RECUPERO!). `minWin: 1`: la cascata paga almeno la puntata (`CascadeOutcome.topUp`) | `engine/bonus.ts`, `types.ts`, `machines/desertFalcon.ts` |
+| Cascata — RTP | per pagare recupero e minimo: scala ×1→×5 (era fino a ×10), giri 6/9/12 (erano 8/12/16) | `machines/desertFalcon.ts` |
+| Forzieri | niente ×1: valori ×2, ×3, ×4, ×5, ×8… ×50 (il ×4 nuovo tiene basso il premio con 4 Forzieri, perché i 5 forzieri sono tutti diversi) | `machines/sheikhsFortune.ts` |
+| Presentazione | un giro pilotato ESATTAMENTE ogni 3 (contatore in `SlotScene`, non più un tiro a caso), fino a 6000 tentativi | `SlotScene.spin`, `slots/demo.ts` |
+| RTP in tempo reale | interruttore in Gioco Libero (`settings.showSlotRtp`): pastiglia in alto nella slot con RTP della sessione, giri e RTP atteso, verde sopra / rossa sotto | `SlotScene` (`updateRtp`, `settle`), `hud.css` |
+| Backup | file .json scaricabile e ripristinabile (stessa busta versionata e migrazioni del salvataggio) + 3 copie automatiche all'avvio (una ogni 20 ore), che sopravvivono a "Cancella tutti i dati". Il ripristino passa da `actions.restoreSave`, così la scrittura alla chiusura non lo ricopre | `state/backup.ts`, `save.ts` (`decode`), `store.ts`, `SettingsModal.ts` |
+| Notifiche | al telefono compatte e sotto la tacca; trascinandole a destra/sinistra escono con animazione e il posto si richiude | `ui/dom/Toasts.ts`, `shell.css` |
+| Telefono | viewport senza zoom (anche pizzico su Safari) e campi ≥16 px; barra alta e modali dentro l'area sicura; testi più piccoli in impostazioni, profilo e regole; carte di sala e vetrina più piccole in orizzontale; barre del gioco più basse (tavoli e slot più grandi); l'interruttore non va mai a capo | `index.html`, `main.ts`, `main.css`, `panels.css`, `menu.css`, `lobby.css`, `hud.css` |
+
 ## Punto di ripresa — 13/11/2026 (sera): RTP dei bonus, ruota e suspense
 
 Verifica: `tsc` pulito · tutti i test verdi, RTP delle slot compreso (Lucky Sevens 95,9%, Hollywood
