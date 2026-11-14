@@ -413,9 +413,22 @@
       max(var(--sp-3), calc(env(safe-area-inset-bottom) + 6px))
       max(var(--sp-3), env(safe-area-inset-left));
   }
+  /* Altezza esplicita: una percentuale dentro la griglia dello sfondo non
+     limitava niente, la modale usciva dallo schermo e il corpo non scorreva. */
   .go-modal {
     width: 100%;
-    max-height: 100%;
+    max-height: calc(100vh - 2 * var(--sp-3) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 12px);
+    max-height: calc(100dvh - 2 * var(--sp-3) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 12px);
+  }
+  .go-modal .go-panel__body {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .go-modal__x {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    min-height: 42px;
   }
   .go-panel__head {
     padding-top: var(--sp-3);

@@ -49,9 +49,7 @@ composizione dei rulli. Ogni bonus è spiegato passo per passo nella scheda
   cascata: le combinazioni vincenti esplodono, i simboli cadono, ne entrano di
   nuovi e il moltiplicatore sale a ogni cascata (×1 → ×2 → ×3 → ×4 → ×5). Finché
   vinci non scende mai; solo una griglia nuova che non vince lo fa scendere di
-  un gradino (da ×5 a ×4), mai di colpo a ×1. Dopo 3 griglie di fila senza
-  vincite scatta il **recupero** (la griglia dopo vince sicuramente) e la
-  cascata paga **sempre almeno la puntata**. Raramente un Biglietto sul rullo
+  un gradino (da ×5 a ×4), mai di colpo a ×1. Raramente un Biglietto sul rullo
   centrale aggiunge 5 giri.
 - **I Forzieri** (Diamond Royale) — 4 o più Forzieri ovunque. La slot sale e
   compaiono 5 forzieri: se ne sceglie uno e si apre. Ogni forziere ha un

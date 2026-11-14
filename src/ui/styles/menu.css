@@ -698,3 +698,74 @@
     padding-right: max(var(--gutter), env(safe-area-inset-right));
   }
 }
+
+/* Telefono in verticale: barra alta che non si schiaccia. Il saldo si
+   restringe (mai oltre la sua pillola), le icone restano cerchi veri e il
+   profilo, senza testo, e' un cerchio intorno al cerchio con l'iniziale. */
+@media (max-width: 760px) {
+  .go-topbar__right {
+    gap: var(--sp-2);
+    min-width: 0;
+  }
+  .go-topbar {
+    gap: var(--sp-2);
+  }
+  .go-brand__name {
+    font-size: 1.1rem;
+  }
+  .go-brand {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .go-balance {
+    flex: 0 1 auto;
+    min-width: 0;
+    gap: 6px;
+    padding: 0 var(--sp-3) 0 6px;
+  }
+  .go-balance__coin {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+  }
+  .go-balance__text {
+    min-width: 0;
+  }
+  .go-balance__value {
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .go-profile-btn {
+    flex: 0 0 auto;
+    justify-content: center;
+    width: 42px;
+    padding: 0;
+    border-radius: 50%;
+  }
+  .go-profile-btn__avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 1.05rem;
+  }
+  .go-icon-btn {
+    flex: 0 0 auto;
+  }
+}
+@media (max-width: 400px) {
+  .go-balance__value {
+    font-size: 0.84rem;
+  }
+  .go-balance {
+    padding-right: 10px;
+  }
+}
+@media (max-width: 360px) {
+  .go-brand__name {
+    font-size: 1.05rem;
+  }
+  .go-balance__value {
+    font-size: 0.82rem;
+  }
+}
