@@ -17,6 +17,7 @@ dispositivo vero.
 | Notifiche | al telefono compatte e sotto la tacca; trascinandole a destra/sinistra escono con animazione e il posto si richiude | `ui/dom/Toasts.ts`, `shell.css` |
 | Telefono | viewport senza zoom (anche pizzico su Safari) e campi ≥16 px; barra alta e modali dentro l'area sicura; testi più piccoli in impostazioni, profilo e regole; carte di sala e vetrina più piccole in orizzontale; barre del gioco più basse (tavoli e slot più grandi); l'interruttore non va mai a capo | `index.html`, `main.ts`, `main.css`, `panels.css`, `menu.css`, `lobby.css`, `hud.css` |
 | Telefono — correzioni | le modali non scorrevano: `max-height: 100%` dentro la griglia dello sfondo non limitava niente, ora l'altezza è esplicita (`100dvh` meno aree sicure). In verticale il saldo si restringe dentro la sua pillola, impostazioni e profilo sono cerchi veri (prima schiacciati o a pillola), X di chiusura più grande (46 px, 42 al telefono) | `panels.css`, `menu.css`, `shell.css` |
+| Ordine delle impostazioni | Backup e Dati (cancellazione) sono sempre gli ultimi gruppi, anche in Gioco Libero dopo Presentazione e Modalità Libera | `ui/dom/SettingsModal.ts` |
 
 ## Punto di ripresa — 13/11/2026 (sera): RTP dei bonus, ruota e suspense
 

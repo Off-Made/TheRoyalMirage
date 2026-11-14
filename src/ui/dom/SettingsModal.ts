@@ -215,8 +215,36 @@ export function openSettings(onLanguageChanged?: () => void): void {
         }),
         'settings.tutorialsHint'
       )
-    ),
+    )
+  );
 
+  // Verso il fondo (prima di backup e dati), e SOLO in modalita' Libera: serve per le presentazioni dal
+  // vivo e non deve comparire a chi gioca in Carriera.
+  if (store.getState().mode === 'freeplay') {
+    body.append(
+      group(
+        'settings.demo',
+        fieldRow('settings.demoBigWins', toggle(s.demoBigWins, (v) => actions.updateSettings({ demoBigWins: v }))),
+        fieldRow('settings.demoFreeSpins', toggle(s.demoFreeSpins, (v) => actions.updateSettings({ demoFreeSpins: v }))),
+        fieldRow('settings.demoHoldWin', toggle(s.demoHoldWin, (v) => actions.updateSettings({ demoHoldWin: v }))),
+        fieldRow('settings.demoBonus', toggle(s.demoBonus, (v) => actions.updateSettings({ demoBonus: v })), 'settings.demoBonusHint'),
+        // La spiegazione vale per tutti gli interruttori del gruppo: sta
+        // sotto l'ultima riga, non dentro una di esse.
+        el('p', { class: 'go-field__hint go-field__note', i18n: 'settings.demoHint' })
+      ),
+      group(
+        'settings.freeplay',
+        fieldRow(
+          'settings.showSlotRtp',
+          toggle(s.showSlotRtp, (v) => actions.updateSettings({ showSlotRtp: v })),
+          'settings.showSlotRtpHint'
+        )
+      )
+    );
+  }
+
+  // Sempre per ultimi: il backup dei dati e la loro cancellazione.
+  body.append(
     group(
       'settings.backup',
       fieldRow(
@@ -265,31 +293,6 @@ export function openSettings(onLanguageChanged?: () => void): void {
       )
     )
   );
-
-  // In fondo, e SOLO in modalita' Libera: serve per le presentazioni dal
-  // vivo e non deve comparire a chi gioca in Carriera.
-  if (store.getState().mode === 'freeplay') {
-    body.append(
-      group(
-        'settings.demo',
-        fieldRow('settings.demoBigWins', toggle(s.demoBigWins, (v) => actions.updateSettings({ demoBigWins: v }))),
-        fieldRow('settings.demoFreeSpins', toggle(s.demoFreeSpins, (v) => actions.updateSettings({ demoFreeSpins: v }))),
-        fieldRow('settings.demoHoldWin', toggle(s.demoHoldWin, (v) => actions.updateSettings({ demoHoldWin: v }))),
-        fieldRow('settings.demoBonus', toggle(s.demoBonus, (v) => actions.updateSettings({ demoBonus: v })), 'settings.demoBonusHint'),
-        // La spiegazione vale per tutti gli interruttori del gruppo: sta
-        // sotto l'ultima riga, non dentro una di esse.
-        el('p', { class: 'go-field__hint go-field__note', i18n: 'settings.demoHint' })
-      ),
-      group(
-        'settings.freeplay',
-        fieldRow(
-          'settings.showSlotRtp',
-          toggle(s.showSlotRtp, (v) => actions.updateSettings({ showSlotRtp: v })),
-          'settings.showSlotRtpHint'
-        )
-      )
-    );
-  }
 
   showModal({ titleKey: 'settings.title', body, width: 760 });
 }
